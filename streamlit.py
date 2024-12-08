@@ -9,18 +9,11 @@ from db import (
 )
 from config import Config
 
-
-aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-aws_region = os.getenv('AWS_DEFAULT_REGION')
-
-
 st.set_page_config(page_title="Chatbot", page_icon="📖")
-st.title("Chatbot")
+st.title("Interviewer Chatbot")
 
 with open("bot_msgs.yml", "r") as f:
     bot_msgs = yaml.safe_load(f)
-    
 
 config = Config()   
 
@@ -54,8 +47,6 @@ if st.session_state["state"] == "start":
     # st.session_state["messages"].append({"role": "assistant", "content": first_msg})
     # st.session_state["state"] = "issue"
 
-        
-
 
 bot_steps = {
     "start": BotStart,
@@ -68,9 +59,8 @@ bot_steps = {
 }
         
 
-# if user_input := st.chat_input():
 # if st.session_state["show_chat"]:
-if True: # TODO: maybe will implement the real thing later.
+if True: # TODO: maybe will implement the real thing later - hide chat during questions
     user_input = st.chat_input()
 else:
     user_input = None

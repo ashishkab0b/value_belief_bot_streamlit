@@ -7,16 +7,15 @@ from dotenv import load_dotenv
 import logging
 from botocore.exceptions import ClientError
 import yaml
+import streamlit as st
 
 boto3.set_stream_logger('botocore', level=logging.DEBUG)
 
 logger = setup_logger()
-load_dotenv()
 
-
-aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-region_name = os.getenv('AWS_DEFAULT_REGION')
+aws_access_key_id = st.secrets["AWS_ACCESS_KEY_ID"]
+aws_secret_access_key = st.secrets["AWS_SECRET_ACCESS_KEY"]
+aws_region = st.secrets["AWS_DEFAULT_REGION"]
 
 with open("config.yml", "r") as f:
     config = yaml.safe_load(f)
@@ -26,9 +25,8 @@ dynamodb = boto3.resource(
     'dynamodb',
     aws_access_key_id=aws_access_key_id,
     aws_secret_access_key=aws_secret_access_key,
-    region_name=region_name
+    region_name=aws_region
 )
-
 
 table_name = config['dynamo_tbl_name']
 
