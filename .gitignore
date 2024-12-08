@@ -1,0 +1,24 @@
+# Environment
+venv/
+**/.env
+
+# Python caching
+**/__pycache__/
+**/*.py[cod]
+
+# Mac
+.DS_Store
+
+# Data
+**/data/
+
+# R 
+.Rproj.user
+.RData
+.Rhistory
+
+# Jupyter Notebook 
+.ipynb_checkpoints/
+
+# Logs
+**/logs/

@@ -1,0 +1,62 @@
+
+solicit_issue:
+  career: >
+    Please tell me about an issue in your life that is currently bothering you in the domain of your <strong>career</strong>. 
+    This could be an issue related to job searching, career advancement opportunities, 
+    work-life balance, workplace environment and culture, job satisfaction, 
+    salary and benefits, remote work challenges, job security, 
+    or any other other career-related issues.
+  relationship: > 
+    Please tell me about an issue in your life that is currently bothering you in the domain of your  <strong>interpersonal relationships </strong>.
+    This could be an issue related to conflicts with friends or family, 
+    romantic relationship challenges, loneliness, maintaining or ending relationships, 
+    trust issues, feeling misunderstood, social anxiety, or any other interpersonal challenges.
+
+rate_issue:
+# Keys must contain no underscores
+  neg: >
+    On a scale of 0 to 100, where 0 is not negative at all and 
+    100 is the most negative you have felt in the past six months, 
+    how intense is the negative emotion you are feeling about this issue?
+  pos: >
+    On a scale of 0 to 100, where 0 is not positive at all and 
+    100 is the most positive you have felt in the past six months, 
+    how intense is the positive emotion you are feeling about this issue?
+
+issue_issue_transition: > 
+  Thank you for sharing your experience. 
+  Now, we will do a similar exercise with regard to a different area of your life.
+
+reap_intro: |
+  We will now proceed to the next part of the task. In this part of the task, we will provide you 
+  5 alternative perspectives regarding your <strong>{domain}</strong> issue. Please read each of the perspectives carefully. 
+  In the next step, you will be asked questions about these perspectives.
+
+
+rank_reaps: >
+  We will now present you with a series of alternative ways to think about your issue.
+  Please rank these alternative perspectives in terms of your preference.
+  You can rank them from 1 to 5, where 1 is the most preferred and 5 is the least preferred.
+  Please make sure to assign a different rank to each perspective.
+
+
+rate_reap_stem:
+   On a scale of 0 to 100, where 0 is not at all and 100 is completely...<br><br>
+rate_reap: 
+  # Keys must contain no underscores
+  success:
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    How much better do you think <u><strong>each of these perspectives would make you feel</strong></u> about your issue?
+  believable: 
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    How <u><strong>believable</strong></u> do you think each of these perspectives is?
+  values:
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    How much would <u><strong>taking this perspective match your deeper values or the kind of person you ideally want to be</strong></u>?
+
+
+end_chatbot:
+  Thank you for completing the chatbot part of the study.
+  <strong>
+  Please return to the Qualtrics window to finish the study.
+  </strong>
