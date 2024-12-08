@@ -451,6 +451,7 @@ class BotRateReap(BotStep):
         
         if not remaining_qs_cur and not remaining_qs_other:
             self.ss["state"] = "end"
+            self.ss["show_chat"] = False
             return "end", {}
         elif not remaining_qs_cur:
             self.switch_cur_domain()
@@ -570,4 +571,9 @@ class BotEnd(BotStep):
         return None, None
             
     def generate_output(self, **kwargs):
-        return bot_msgs["end_chatbot"]
+        
+        output = bot_msgs["end_chatbot"]
+        with self.st.chat_message("assistant"):
+            self.st.markdown(output, unsafe_allow_html=True)
+      
+        return 
