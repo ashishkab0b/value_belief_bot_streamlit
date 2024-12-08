@@ -17,11 +17,11 @@ rate_issue:
   neg: >
     On a scale of 0 to 100, where 0 is not negative at all and 
     100 is the most negative you have felt in the past six months, 
-    how intense is the negative emotion you are feeling about this issue?
+    how negatively do you feel when thinking about this issue?
   pos: >
     On a scale of 0 to 100, where 0 is not positive at all and 
     100 is the most positive you have felt in the past six months, 
-    how intense is the positive emotion you are feeling about this issue?
+    how positively do you feel when thinking about this issue?
 
 issue_issue_transition: > 
   Thank you for sharing your experience. 
@@ -45,7 +45,7 @@ rate_reap_stem:
 
 rate_reap_next_q:
   Thank you! Loading next question...
-  
+
 rate_reap: 
   # Keys must contain no underscores
   success:
