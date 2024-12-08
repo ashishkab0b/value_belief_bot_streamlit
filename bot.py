@@ -25,15 +25,13 @@ from db import (
 from config import Config
 import streamlit as st
 
-
 logger = setup_logger()
-
-
 
 with open("bot_msgs.yml", "r") as f:
     bot_msgs = yaml.safe_load(f)
 
-    
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+
 config = Config()
 
 N_REAPPRAISALS = config.n_reappraisals
@@ -56,7 +54,7 @@ class Chatbot():
         Returns:
             str: The model's response or an error message.
         """
-        client = OpenAI()
+        client = OpenAI(api_key=openai_api_key)
         model = config.llm_model
         temperature = config.temperature
         msgs = [{"role": "system", "content": prompt}] + (messages or [])
@@ -316,7 +314,7 @@ class BotRateIssue(BotStep):
                 for q_label, q_text in bot_msgs["rate_issue"].items():
                     q_key = q_label + "_" + cur_dom
                     self.st.slider(q_text, min_value=0, max_value=100, step=1, key=q_key)
-                self.st.form_submit_button("Submit", on_click=self.slider_callback)
+                self.st.form_submit_button("Continue", on_click=self.slider_callback)
                 
 
 class BotGenerateReaps(BotStep):
@@ -326,7 +324,6 @@ class BotGenerateReaps(BotStep):
     def __init__(self, st):
         super().__init__(st)
         self.cur_state = "generate_reaps"
-    
     
     def generate_reaps(self):
         issue_msgs = self.ss["issue_msgs"][self.ss["cur_domain"]]
@@ -338,7 +335,6 @@ class BotGenerateReaps(BotStep):
             )
         reaps = json.loads(reaps)
         return reaps
-        
         
     def process_input(self, user_input):
         pass
@@ -493,6 +489,10 @@ class BotRateReap(BotStep):
             remaining_qs = self.remaining_questions(self.ss["cur_domain"])
             next_q_label = remaining_qs[0]
         
+        with self.chat_message("assistant"):
+            self.st.markdown(bot_msgs["rate_reap_next_q"], unsafe_allow_html=True)
+        time.sleep(2)
+        
         with self.st.form(key="rate_reap"):
             
             # Print the question
@@ -509,7 +509,7 @@ class BotRateReap(BotStep):
                     q_key = next_q_label + "_" + self.ss["cur_domain"] + "_" + str(i)
                     self.st.slider(reap, min_value=0, max_value=100, step=1, key=q_key)
             
-            self.st.form_submit_button("Submit", on_click=lambda: self.slider_callback(next_q_label))
+            self.st.form_submit_button("Continue", on_click=lambda: self.slider_callback(next_q_label))
 
         return
     
