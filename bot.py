@@ -491,7 +491,7 @@ class BotRateReap(BotStep):
             next_q_label = remaining_qs[0]
         
         # Loading next question message (to highlight that the question is changing)
-        with self.chat_message("assistant"):
+        with self.st.chat_message("assistant"):
             self.st.markdown(bot_msgs["rate_reap_next_q"], unsafe_allow_html=True)
         time.sleep(2)
         
