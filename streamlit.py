@@ -8,10 +8,40 @@ from db import (
     db_new_participant
 )
 from config import Config
+import pathlib
+from bs4 import BeautifulSoup
 
+# Disable copy/paste
+GA_JS = """
+document.addEventListener('DOMContentLoaded', function() {
+    // Disable text selection
+    document.body.style.userSelect = 'none';
+
+    // Disable copy-paste events
+    document.addEventListener('copy', (e) => {
+        e.preventDefault();
+    });
+    document.addEventListener('paste', (e) => {
+        e.preventDefault();
+    });
+});
+"""
+
+# Insert the script in the head tag of the static template inside your virtual environement
+index_path = pathlib.Path(st.__file__).parent / "static" / "index.html"
+soup = BeautifulSoup(index_path.read_text(), features="lxml")
+if not soup.find(id='custom-js'):
+    script_tag = soup.new_tag("script", id='custom-js')
+    script_tag.string = GA_JS
+    soup.head.append(script_tag)
+    index_path.write_text(str(soup))
+    
+    
+    
 st.set_page_config(page_title="Chatbot", page_icon="📖")
 st.title("Interviewer Chatbot")
 
+    
 with open("bot_msgs.yml", "r") as f:
     bot_msgs = yaml.safe_load(f)
 
