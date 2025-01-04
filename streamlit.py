@@ -71,6 +71,9 @@ bot_steps = {
     "rate_reap": BotRateReap,
     "end": BotEnd
 }
+if "prolific_id" not in st.query_params:
+    st.error("Please provide a valid URL that includes the Prolific ID. Contact the researcher on Prolific for assistance.")
+    st.stop()
 
 # Initialize the session state
 init_state = {
