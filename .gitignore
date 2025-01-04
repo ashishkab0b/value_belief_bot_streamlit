@@ -26,3 +26,5 @@ venv/
 
 
 alembic.ini
+
+**/*.csv
