@@ -1,3 +1,5 @@
+# bot.py
+
 from logger_setup import setup_logger
 import yaml
 from typing import Literal, Dict, Any, List, Tuple, Optional
@@ -9,6 +11,7 @@ from decimal import Decimal
 from datetime import datetime
 from itertools import product
 from openai import OpenAI
+import openai
 from outputs import (
     TextOutput, 
     RadioOutput, 
@@ -16,32 +19,55 @@ from outputs import (
     SliderOutput
 )
 from pprint import pprint
-from db import (
-    db_add_message,
-    db_issue_feature,
-    db_reap_feature,
-    db_new_reap
+from crud import (
+    db_create_issue, 
+    db_create_reappraisal,
+    db_create_message,
+    db_update_issue,
+    db_update_reappraisal,
 )
-from config import Config
+from sqlalchemy.orm import Session
+from config import CurrentConfig
 import streamlit as st
+import os
+from langsmith.wrappers import wrap_openai
+from langsmith import traceable
+import toml
 
 logger = setup_logger()
+session = Session()
 
+# load secrets toml into environment variables
+secrets = toml.load(".streamlit/secrets.toml")
+for key, value in secrets.items():
+    os.environ[key] = str(value)
+    
+
+from sqlalchemy.orm import Session
+
+from db import get_session
+        
 with open("bot_msgs.yml", "r") as f:
     bot_msgs = yaml.safe_load(f)
 
-openai_api_key = st.secrets["OPENAI_API_KEY"]
+openai_api_key = CurrentConfig.OPENAI_API_KEY
 
-config = Config()
+logger.setLevel(CurrentConfig.LOG_LEVEL)
 
-N_REAPPRAISALS = config.n_reappraisals
+N_REAPPRAISALS = CurrentConfig.N_REAPPRAISALS
     
 with open("prompts.yml", "r") as f:
     prompts = yaml.safe_load(f)
+    
+
+# Auto-trace LLM calls in-context
+client = wrap_openai(openai.Client(api_key=openai_api_key))
+# client = OpenAI(api_key=openai_api_key)
 
 class Chatbot():
     
     @staticmethod
+    @traceable
     def query_gpt(prompt: str, messages: Optional[List[dict]] = None, max_tries: int = 3, pid=None) -> str:
         """
         A function that queries the GPT model.
@@ -54,9 +80,8 @@ class Chatbot():
         Returns:
             str: The model's response or an error message.
         """
-        client = OpenAI(api_key=openai_api_key)
-        model = config.llm_model
-        temperature = config.temperature
+        model = CurrentConfig.LLM_MODEL
+        temperature = CurrentConfig.LLM_TEMPERATURE
         msgs = [{"role": "system", "content": prompt}] + (messages or [])
         
         for attempt in range(max_tries):
@@ -68,11 +93,11 @@ class Chatbot():
                 )
                 return completion.choices[0].message.content
             except Exception as e:
-                logger.error(f"PID {pid} - Attempt {attempt + 1} failed: {e}")
+                logger.error(f"Attempt {attempt + 1} failed: {e} -- pid={pid}")
         
         # If all attempts fail
-        logger.error("PID {pid} - Max retries reached. Returning fallback response.")
-        return config.error_message
+        logger.error("Max retries reached. Returning fallback response -- pid={pid}")
+        return CurrentConfig.ERROR_MESSAGE
     
 class BotStep():
 
@@ -82,25 +107,43 @@ class BotStep():
         self.ss = st.session_state
         self.cur_domain = st.session_state["cur_domain"]
         self.other_domain = "career" if self.cur_domain == "relationship" else "relationship"
+        self.prolific_id = st.session_state["prolific_id"]
         self.pid = st.session_state["pid"]
         self.cur_state = st.session_state["state"]
         self.messages = st.session_state["messages"]
         self.user_input = None
         
     
-    def process_input(self, user_input):
-        # Save user input to db
-        db_add_message(
-            pid=self.pid, 
-            role='user', 
-            content=user_input,
-            state=self.ss["state"],
-            domain=self.ss["cur_domain"]
-            )
-        
-        self.messages.append({"role": "user", "content": user_input})
-        # Store user input as an attribute
-        self.user_input = user_input
+    def process_input(self, user_input: str):
+        """
+        A function that saves the user's chat input to the database and session state.
+
+        Args:
+            user_input (str): The user's chat input
+        """
+        user_input = str(user_input).strip()
+
+        try:
+            with get_session() as session:
+                message = db_create_message(
+                    session=session,
+                    participant_id=self.pid,
+                    role="user",
+                    content=user_input,
+                    state=self.ss["state"], 
+                    domain=self.ss["cur_domain"]
+                )
+                session.commit()
+                message_id = message.id
+        except Exception as e:
+            logger.error(f"Error creating message -- participant_id={self.pid}")
+            logger.exception(e)
+            self.st.error(CurrentConfig.ERROR_MESSAGE)
+            self.st.stop()
+        else:
+            logger.info(f"Message created -- participant_id={self.pid}, message_id={message_id}")
+            self.messages.append({"role": "user", "content": user_input})
+            self.user_input = user_input
         
     def switch_cur_domain(self):
         '''
@@ -132,12 +175,15 @@ class BotStep():
         
     def next_state(self):
         '''
-        A function that returns the next state'''
+        A function that returns the next state
+        '''
         raise NotImplementedError
     
     
     def generate_output(self, **kwargs) -> List[Dict[str, Any]]:
-        '''A function that generates the bot messages'''
+        '''
+        A function that generates the bot messages
+        '''
         raise NotImplementedError
     
 class BotStart(BotStep):
@@ -238,14 +284,27 @@ class BotIssue(BotStep):
             self.ss["messages"].append({"role": "assistant", "content": output})
             with self.st.chat_message("assistant"):
                 self.st.markdown(output, unsafe_allow_html=True)
-        
-            db_add_message(
-                pid=self.pid, 
-                role='assistant', 
-                content=output,
-                state=self.ss["state"],
-                domain=self.ss["cur_domain"]
-                )
+              
+            try:  
+                with get_session() as session:
+                    message=db_create_message(
+                        session=session,
+                        participant_id=self.pid,
+                        role="assistant",
+                        content=output,
+                        state=self.ss["state"],
+                        domain=self.ss["cur_domain"]
+                    )
+                    session.commit()
+                    message_id = message.id
+            except Exception as e:
+                logger.error(f"Error creating message -- participant_id={self.pid}")
+                logger.exception(e)
+                self.st.error(CurrentConfig.ERROR_MESSAGE)
+                self.st.stop()
+            else:
+                logger.info(f"Message created -- participant_id={self.pid}, message_id={message_id}")
+                
                 
     
 class BotRateIssue(BotStep):
@@ -297,13 +356,32 @@ class BotRateIssue(BotStep):
             
             cur_dom = self.ss["cur_domain"]
             
+            kw = {}
             for q_label, q_text in bot_msgs["rate_issue"].items():
                 q_key = q_label + "_" + cur_dom
                 self.ss["rate_issue"][cur_dom][q_label] = self.st.session_state[q_key]
-                db_issue_feature(pid=self.ss["pid"], 
-                                 issue_type=cur_dom,
-                                 feature_type=q_label.upper(),
-                                 value=self.st.session_state[q_key])
+                kw[q_label] = self.st.session_state[q_key]
+            
+            issue_id = self.ss["issue_ids"][cur_dom]
+            try:
+                with get_session() as session:
+                    db_update_issue(
+                        session=session,
+                        id=issue_id,
+                        domain=cur_dom,
+                        **kw
+                    )
+                    session.commit()
+            except Exception as e:
+                logger.error(f"Error updating issue with kw={kw}-- participant_id={self.pid}")
+                logger.exception(e)
+                self.st.error(CurrentConfig.ERROR_MESSAGE)
+                self.st.stop()
+            else:
+                logger.info(f"Issue updated -- participant_id={self.pid}, issue_type={cur_dom}")
+                logger.debug(f"Updated issue: {kw}")
+                
+                
             
                 
         def generate_output(self, **kwargs):
@@ -327,13 +405,24 @@ class BotGenerateReaps(BotStep):
     
     def generate_reaps(self):
         issue_msgs = self.ss["issue_msgs"][self.ss["cur_domain"]]
-        prompt = prompts["n_reappraisals"].format(n=config.n_reappraisals)
+        prompt = prompts["n_reappraisals"].format(n=CurrentConfig.N_REAPPRAISALS)
         reaps = Chatbot.query_gpt(
             prompt=prompt, 
             messages=issue_msgs,
             pid=self.ss["pid"]  # for logging
             )
         reaps = json.loads(reaps)
+        
+        # Save to database
+        for i, reap in enumerate(reaps):
+            with get_session() as session:
+                db_update_reappraisal(
+                    session=session,
+                    id=self.ss["reappraisal_ids"][self.ss["cur_domain"]][i],
+                    text=reap
+                )
+                session.commit()
+        
         return reaps
         
     def process_input(self, user_input):
@@ -372,12 +461,20 @@ class BotGenerateReaps(BotStep):
         msg += summary
         msg += "</div>"
         msg += "</p>"
-        db_issue_feature(
-            pid=self.ss["pid"],
-            issue_type=self.ss["cur_domain"],
-            feature_type="SUMMARY",
-            value=summary
-        )
+        
+        # update summary in bot summarize issue
+        # try:
+        #     with get_session() as session:
+        #         db_update_issue(
+        #             session=session,
+        #             id=self.ss["issue_ids"][self.ss["cur_domain"]],
+        #             summary=summary
+        #         )
+        # except Exception as e:
+        #     logger.error(f"Error updating issue with summary={summary}-- participant_id={self.pid}")
+        #     logger.exception(e)
+        #     self.st.error(CurrentConfig.ERROR_MESSAGE)
+        #     self.st.stop()
         
         # Write instructions to the chat
         with self.st.chat_message("assistant"):
@@ -389,7 +486,7 @@ class BotGenerateReaps(BotStep):
         # Write reappraisals to the chat
         with self.st.form(key="generate_reaps"):
             self.st.markdown("<h2>Perspectives:</h2>", unsafe_allow_html=True)
-            cols = self.st.columns(config.n_reappraisals)
+            cols = self.st.columns(CurrentConfig.N_REAPPRAISALS)
             for i, col in enumerate(cols):
                 with col:
                     self.st.markdown(reaps[i], unsafe_allow_html=True)
@@ -397,11 +494,21 @@ class BotGenerateReaps(BotStep):
         
         # Add reappraisals to database
         for i, reap in enumerate(reaps):
-            db_new_reap(
-                pid=self.ss["pid"], 
-                issue_type=self.ss["cur_domain"], 
-                reap_num=i, 
-                reap_text=reap)
+            try:
+                with get_session() as session:
+                    db_update_reappraisal(
+                        session=session,
+                        id=self.ss["reappraisal_ids"][self.ss["cur_domain"]][i],
+                        text=reap,
+                    )
+                
+            except Exception as e:
+                logger.error(f"Error updating reappraisal with text={reap}-- participant_id={self.pid}")
+                logger.exception(e)
+                self.st.error(CurrentConfig.ERROR_MESSAGE)
+                self.st.stop()
+            else:
+                logger.info(f"Reappraisal updated -- participant_id={self.pid}, reappraisal_id={self.ss['reappraisal_ids'][self.ss['cur_domain']][i]}")
                 
 
 class BotRateReap(BotStep):
@@ -470,14 +577,25 @@ class BotRateReap(BotStep):
             label, _, i = slider_key.split("_")
             i = int(i)
             self.ss["rate_reap"][domain][i][label] = self.st.session_state[slider_key]
-    
-            db_reap_feature(
-                pid=self.ss["pid"],
-                issue_type=domain,
-                reap_num=i,
-                feature_type=label.upper(),
-                value=self.st.session_state[slider_key]
-            )
+            
+            try:
+                with get_session() as session:
+                    kw = {
+                        label: self.st.session_state[slider_key]
+                    }
+                    db_update_reappraisal(
+                        session=session,
+                        id=self.ss["reappraisal_ids"][domain][i],
+                        **kw
+                    )
+            except Exception as e:
+                logger.error(f"Error updating reappraisal with kw={kw}-- participant_id={self.pid}")
+                logger.exception(e)
+                self.st.error(CurrentConfig.ERROR_MESSAGE)
+                self.st.stop()
+            else:
+                logger.info(f"Reappraisal updated -- participant_id={self.pid}, reappraisal_id={self.ss['reappraisal_ids'][domain][i]}")
+                
             
     def generate_output(self, **kwargs):
         '''
@@ -530,6 +648,24 @@ class BotSummarizeIssue(BotStep):
             messages=msgs,
             pid=self.ss["pid"]  # for logging
             )
+        
+        try:
+            with get_session() as session:
+                db_update_issue(
+                    session=session,
+                    id=self.ss["issue_ids"][self.ss["cur_domain"]],
+                    summary=summary
+                )
+                session.commit()
+        except Exception as e:
+            logger.error(f"Error updating issue with summary={summary}-- participant_id={self.pid}")
+            logger.exception(e)
+            self.st.error(CurrentConfig.ERROR_MESSAGE)
+            self.st.stop()
+        else:
+            logger.info(f"Issue updated -- participant_id={self.pid}, issue_type={self.ss['cur_domain']}")
+            logger.debug(f"Updated issue: {summary}")
+            
         return summary      
     
     def process_input(self, user_input):

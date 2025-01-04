@@ -1,19 +1,37 @@
+import os
+import toml
 
-class DevelopmentConfig:
+
+class BaseConfig:
     
-    def __init__(self):
-        
-        self.llm_model = "gpt-4o"
-        self.temperature = 1.0
-        self.dynamo_tbl_name = "value_belief_chatbot_v1"
-        self.n_reappraisals = 5
-        self.debug = True
-        self.domains = ["career", "relationship"]
-        self.error_message = "I'm sorry, there has been an error. Please contact the researcher on Prolific."
-        
-        
-class Config(DevelopmentConfig):
+    OPENAI_API_KEY = toml.load(".streamlit/secrets.toml")["OPENAI_API_KEY"]
+    POSTGRES_URL = toml.load(".streamlit/secrets.toml")["POSTGRES_URL"]
+    ROOT_POSTGRES_URL = toml.load(".streamlit/secrets.toml")["ROOT_POSTGRES_URL"]
     
-    def __init__(self):
+    LLM_MODEL = "gpt-4o"
+    LLM_TEMPERATURE = 1.0
+    N_REAPPRAISALS = 5
+    DOMAINS = ["career", "relationship"]
+    ERROR_MESSAGE = "I'm sorry, there has been an error. Please contact the researcher on Prolific."
+
+
+class ProductionConfig(BaseConfig):
+    
+    DEBUG = False
+    LOG_LEVEL = "INFO"
+
+
+class DevelopmentConfig(BaseConfig):
         
-        super().__init__()
+    DEBUG = True
+    LOG_LEVEL = "DEBUG"
+ 
+ 
+config_map = {
+    "development": DevelopmentConfig,
+    "production": ProductionConfig
+}
+
+
+current_env = os.getenv("ENV_TYPE", "development")
+CurrentConfig = config_map.get(current_env, DevelopmentConfig)

@@ -54,9 +54,12 @@ rate_reap:
   believable: 
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
     How <u><strong>believable</strong></u> do you think each of these perspectives is?
-  values:
+  valued:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
     How much would <u><strong>taking this perspective match your deeper values or the kind of person you ideally want to be</strong></u>?
+  relevance:
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    How <u><strong>relevant</strong></u> is this perspective to the issue you're facing?
 
 
 end_chatbot:

@@ -23,3 +23,6 @@ venv/
 
 # Logs
 **/logs/
+
+
+alembic.ini
