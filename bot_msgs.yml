@@ -50,22 +50,23 @@ rate_reap:
   # Keys must contain no underscores
   success:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
-    How much better do you think <u><strong>each of these perspectives would make you feel</strong></u> about your issue?
+    How much <u><strong>better</u></strong> do you think taking each of these perspectives <u><strong>would make you feel</strong></u> about your issue?
   believable: 
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
     How <u><strong>believable</strong></u> do you think each of these perspectives is?
   valued:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
-    How much would <u><strong>taking this perspective match your deeper values or the kind of person you ideally want to be</strong></u>?
-    If you feel the perspective is not particularly relevant to your values OR if you feel that the perspective is incongruent with your values, respond with a lower score.
-    If you feel that the perspective is very much in line with your values, respond with a higher score.
+    How much does <u><strong>this perspective match your deeper values </strong></u> (e.g. the kind of person you ideally want to be, the kind of place you ideally want the world to be)?
+    If you the perspective is not particularly relevant to your values OR if you the perspective is incongruent with your values, respond with a lower score.
+    If you the perspective is very much in line with your values, respond with a higher score.
   relevance:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
     How <u><strong>relevant</strong></u> is this perspective to the issue you're facing?
+    Aside from whether you agree with the perspective, it may be more or less related to the actual issue you're facing. 
+    Here we are asking about how much this perspective even speaks to the problem at hand (regardless of whether you think it is an accurate or helpful perspective.)
 
 
 end_chatbot:
-  Thank you for completing the chatbot part of the study.
   <strong>
   Please return to the Qualtrics window to finish the study.
   </strong>

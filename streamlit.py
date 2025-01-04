@@ -77,7 +77,7 @@ init_state = {
     "messages": [],  # (role, content)
     "state": "start",
     "llm_model": CurrentConfig.LLM_MODEL,
-    "prolific_id": st.query_params["prolific_id"] if "prolific_id" in st.query_params else "00000",
+    "prolific_id": st.query_params["prolific_id"],
     "started_ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     "issue_msgs": {"career": [], "relationship": []},
     "rate_issue": {"career": {}, "relationship": {}}, # {career: {pos: 3, pos_changed: True, }}
