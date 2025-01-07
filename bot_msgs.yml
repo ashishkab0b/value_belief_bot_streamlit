@@ -56,14 +56,15 @@ rate_reap:
     How <u><strong>believable</strong></u> do you think each of these perspectives is?
   valued:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
-    How much does <u><strong>this perspective match your deeper values </strong></u> (e.g. the kind of person you ideally want to be, the kind of place you ideally want the world to be)?
-    If you the perspective is not particularly relevant to your values OR if you the perspective is incongruent with your values, respond with a lower score.
-    If you the perspective is very much in line with your values, respond with a higher score.
+    How much does <u><strong>this perspective match your deeper values </strong></u>? <br/>
+    (e.g. the kind of person you ideally want to be, the kind of place you ideally want the world to be.)
+    If you the perspective is <i>not relevant</i> to your values OR if the perspective is <i>incongruent</i> with your values, respond with a lower score.
+    If you the perspective is aligned with your values, respond with a higher score.
   relevance:
     <br/><br/><br/><br/><br/><br/><br/><br/><br/>
-    How <u><strong>relevant</strong></u> is this perspective to the issue you're facing?
-    Aside from whether you agree with the perspective, it may be more or less related to the actual issue you're facing. 
-    Here we are asking about how much this perspective even speaks to the problem at hand (regardless of whether you think it is an accurate or helpful perspective.)
+    How <u><strong>relevant</strong></u> is this perspective to the issue you're facing? <br/>
+    Aside from whether you agree with the perspective, it may be more or less connected to what you see as the actual issue. 
+    Here we are asking about how much this perspective even speaks to the problem at hand (regardless of whether you think the persective is true or not.)
 
 
 end_chatbot:

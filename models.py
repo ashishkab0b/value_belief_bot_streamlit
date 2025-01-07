@@ -1,3 +1,5 @@
+# models.py
+
 from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy import (
@@ -8,6 +10,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     DateTime,
+    Boolean,
     Enum as SQLAlchemyEnum,
     create_engine,
     Index,
@@ -19,11 +22,18 @@ from sqlalchemy.orm import (
     relationship,
     Session,
 )
-
-
+    
 class Base(DeclarativeBase):
     pass
 
+class StateEnum(str, Enum):
+    start = "start"
+    issue = "issue"
+    rate_issue = "rate_issue"
+    generate_reaps = "generate_reaps"
+    summarize_issue = "summarize_issue"
+    rate_reap = "rate_reap"
+    end = "end"
 
 class DomainEnum(str, Enum):
     career = "career"
@@ -31,14 +41,18 @@ class DomainEnum(str, Enum):
 
 
 class RoleEnum(str, Enum):
-    USER = "user"
-    ASSISTANT = "assistant"
+    user = "user"
+    assistant = "assistant"
 
 
 class Participant(Base):
     __tablename__ = 'participants'
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    prolific_id: Mapped[str] = mapped_column(String, nullable=False, unique=False)
+    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # prolific_id
+    
+    # Data
+    cur_state: Mapped[str] = mapped_column(SQLAlchemyEnum(StateEnum), nullable=True, default=StateEnum.start)
+    cur_domain: Mapped[str] = mapped_column(SQLAlchemyEnum(DomainEnum), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
@@ -55,6 +69,13 @@ class Participant(Base):
     reappraisals: Mapped[list['Reappraisal']] = relationship(
         back_populates='participant', cascade="all, delete-orphan"
     )
+    
+    def __repr__(self):
+        return (
+            f"<Participant(id={self.id}, cur_state={self.cur_state}, "
+            f"cur_domain={self.cur_domain}, created_at={self.created_at}, "
+            f"updated_at={self.updated_at}, deleted_at={self.deleted_at})>"
+        )
 
 class Message(Base):
     __tablename__ = 'messages'
@@ -75,6 +96,15 @@ class Message(Base):
 
     # Relationships
     participant: Mapped['Participant'] = relationship(back_populates='messages')
+    
+    def __repr__(self):
+        return (
+            f"<Message(id={self.id}, participant_id={self.participant_id}, "
+            f"state={self.state}, domain={self.domain}, role={self.role}, "
+            f"content={(self.content[:30] + '...') if self.content else 'None'}, "
+            f"created_at={self.created_at}, updated_at={self.updated_at}, "
+            f"deleted_at={self.deleted_at})>"
+        )
 
 
 class Issue(Base):
@@ -89,6 +119,7 @@ class Issue(Base):
     neg: Mapped[int] = mapped_column(Integer, nullable=True)
     pos: Mapped[int] = mapped_column(Integer, nullable=True)
     summary: Mapped[str] = mapped_column(Text, nullable=True)
+    # interview_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
@@ -98,6 +129,15 @@ class Issue(Base):
     # Relationships
     participant: Mapped['Participant'] = relationship(back_populates='issues')
     reappraisals: Mapped[list['Reappraisal']] = relationship(back_populates='issue', cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return (
+            f"<Issue(id={self.id}, participant_id={self.participant_id}, "
+            f"domain={self.domain}, neg={self.neg}, pos={self.pos}, "
+            f"summary={(self.summary[:30] + '...') if self.summary else 'None'}, "
+            f"created_at={self.created_at}, updated_at={self.updated_at}, "
+            f"deleted_at={self.deleted_at})>"
+        )
 
 
 class Reappraisal(Base):
@@ -124,3 +164,14 @@ class Reappraisal(Base):
     # Relationships
     participant: Mapped['Participant'] = relationship(back_populates='reappraisals')
     issue: Mapped['Issue'] = relationship(back_populates='reappraisals')
+    
+    def __repr__(self):
+        return (
+            f"<Reappraisal(id={self.id}, issue_id={self.issue_id}, "
+            f"participant_id={self.participant_id}, domain={self.domain}, "
+            f"reap_num={self.reap_num}, text={(self.text[:30] + '...') if self.text else 'None'}, "
+            f"success={self.success}, believable={self.believable}, "
+            f"valued={self.valued}, relevance={self.relevance}, "
+            f"created_at={self.created_at}, updated_at={self.updated_at}, "
+            f"deleted_at={self.deleted_at})>"
+        )

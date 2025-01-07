@@ -19,9 +19,11 @@ DROP TABLE IF EXISTS public.issues CASCADE;
 DROP TABLE IF EXISTS public.messages CASCADE;
 DROP TABLE IF EXISTS public.participants CASCADE;
 DROP TABLE IF EXISTS public.reappraisals CASCADE;
+DROP TYPE stateenum CASCADE;
+DROP TYPE domainenum CASCADE;
+DROP TYPE roleenum CASCADE;
 """
 
 """
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ashish;
-GRANT USAGE, SELECT, UPDATE ON SEQUENCE participants_id_seq TO ashish;
 """

@@ -12,7 +12,7 @@ DATABASE_URL = CurrentConfig.POSTGRES_URL
 engine = create_engine(DATABASE_URL)
 
 # Specify the directory to save CSV files
-output_dir = Path("csv_dumps")
+output_dir = Path("vbbr_bot_rproj/data/raw/sql_export")
 output_dir.mkdir(exist_ok=True)
 
 # Mapping of models

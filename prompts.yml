@@ -47,6 +47,8 @@ n_reappraisals: >
   Your goal is to maximize how different each reappraisal is.
   Give reappraisals rather than advice for what to do.
   Format your response as a JSON list of length {n} where each element is a string that is a reappraisal.
+  Do not include anything except the JSON list of reappraisals in your response.
+  Your entire response must be parsable as JSON.
 
   <output format>
   [

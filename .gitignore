@@ -28,3 +28,5 @@ venv/
 alembic.ini
 
 **/*.csv
+
+**/secrets.R

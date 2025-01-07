@@ -1,0 +1,200 @@
+---
+title: "Preprocessing script"
+author: "Ashish"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    theme: paper
+---
+
+Initialization
+===
+```{r, message=FALSE}
+# devtools::install_github("amehtaSF/rsurveyutils")
+library(rsurveyutils)
+library(qualtRics)
+library(here)
+library(tidyverse)
+library(tidylog)
+theme_set(theme_bw())
+```
+
+
+Preprocessing
+===
+
+Read data
+---
+```{r}
+filepath <- sprintf("%s/vbbr_bot_jan2025.csv", recent_date_dir(here("data/raw")))
+df_file <- read_survey(here(filepath)) %>% 
+  janitor::clean_names()
+
+df_file %>%
+  names %>%
+  cat(sep = "\n")
+```
+
+```{r}
+source("secrets.R")  # load api_key
+check_ip <- function(ip_address, api_key) {  
+	require(jsonlite)
+	require(httr)  
+	# Construct the URL  
+	url <- paste0("https://vpnapi.io/api/", ip_address, "?key=", api_key)    
+	# Send the API request  
+	response <- httr::GET(url)    
+	# Check if the request was successful  
+	if (httr::http_status(response)$category == "Success") {    
+	# Parse the JSON response    
+	parsed_response <- jsonlite::fromJSON(httr::content(response, "text", encoding = "UTF-8"))
+  # Extract desired fields into a named list    
+	extracted_data <- list(      
+		IP_country = parsed_response$location$country,      
+		IP_vpn = parsed_response$security$vpn,      
+		IP_tor = parsed_response$security$tor,      
+		IP_proxy = parsed_response$security$proxy,      
+		IP_relay = parsed_response$security$relay    
+		)        
+		# Return the output as a dataframe    
+		return(as.data.frame(extracted_data))  
+	} else {    
+		# If request was not successful, print error message    
+		cat("Error:", httr::http_status(response)$reason, "\n")    
+		return(NULL)  
+	}}
+
+df_ipChecked <- df_file %>%
+select(prolific_id, IPAddress) %>%
+mutate(ip_info = map(IPAddress, ~check_ip(.x, api_key))) %>%
+unnest(ip_info)
+```
+
+
+Read codebooks
+---
+```{r}
+
+codebook_filepath <- "data/vbbr_bot_codebook.xlsx"
+
+codebook_vars <- readxl::read_excel(here(codebook_filepath), sheet="rename")
+codebook_values <- readxl::read_excel(here(codebook_filepath), sheet="recode")
+```
+
+Process data
+---
+```{r}
+df_raw <- df_file %>% 
+  # -- remove qualtrics erroneous header -- #
+  # slice(-1) %>% 
+  # -- remove useless columns -- #
+  select(-IPAddress, -RecipientFirstName, -RecipientLastName, -RecipientEmail,
+         -ExternalReference, -LocationLatitude, -LocationLongitude,
+         -DistributionChannel, -UserLanguage) %>% 
+  rename(duration = `Duration (in seconds)`) %>% 
+  # -- add raw data file name -- #
+  mutate(rawDataFile = filepath) %>% 
+  # -- drop columns with all NA -- #
+  select(-where(~all(is.na(.)))) %>% 
+  # -- rename columns -- #
+  codebook_renamer(names_from=codebook_vars$old_var_name,
+                   names_to=codebook_vars$new_var_name)
+```
+
+```{r}
+df_recoded <- df_raw %>% 
+	# -- recode variables -- #
+	codebook_recoder(var_regex=codebook_values$var_name,
+	                 values_from=codebook_values$old_val,
+	                 values_to=codebook_values$new_val)
+```
+
+
+```{r}
+df_proc <- df_recoded %>% 
+  # -- remove columns with all NA -- #
+  select_if(~!all(is.na(.)))
+
+
+# -- Check for duplicates -- #
+df_proc %>% 
+  group_by(pid) %>% 
+  summarize(n = n()) %>%
+  arrange(desc(n)) 
+```
+
+
+
+Read chatbot data
+---
+```{r}
+filepath_participants <- here("data/raw/sql_export/participants.csv")
+df_participants_file <- read_csv(filepath_participants) %>% 
+  filter(prolific_id %in% df_file$prolific_id)
+
+filepath_messages <- here("data/raw/sql_export/messages.csv")
+df_messages_file <- read_csv(filepath_messages) %>% 
+  filter(participant_id %in% df_participants_file$id) %>% 
+  left_join(df_participants_file %>% 
+              select(id, prolific_id), 
+            by = c("participant_id" = "id")) %>% 
+  select(prolific_id, everything())
+
+filepath_issues <- here("data/raw/sql_export/issues.csv")
+df_issues_file <- read_csv(filepath_issues) %>% 
+  filter(participant_id %in% df_participants_file$id) %>% 
+  left_join(df_participants_file %>% 
+              select(id, prolific_id), 
+            by = c("participant_id" = "id")) %>% 
+  select(prolific_id, everything())
+
+filepath_reappraisals <- here("data/raw/sql_export/reappraisals.csv")
+df_reaps_file <- read_csv(filepath_reappraisals) %>% 
+  filter(participant_id %in% df_participants_file$id) %>% 
+  left_join(df_participants_file %>% 
+              select(id, prolific_id), 
+            by = c("participant_id" = "id")) %>% 
+  select(prolific_id, everything())
+
+df_messages_file %>% 
+  filter(prolific_id=="66e3420030eb97c9e561a351") %>% 
+  view
+
+```
+
+```{r}
+df_messages_file %>% 
+  group_by(prolific_id) %>% 
+  summarize(n = n()) %>% 
+  view
+```
+
+
+
+```{r, echo=FALSE}
+# ------ End Preprocessing ------ #
+# ----- Run all chunks above -----#
+```
+
+Export
+===
+```{r}
+filepath_output <- paste0("data/proc/", Sys.Date(), "/_proc.csv")
+df_proc %>% 
+  write_csv(here(filepath_output))
+```
+
+
+
+
+Session Info
+===
+```{r}
+sessionInfo()
+```
+

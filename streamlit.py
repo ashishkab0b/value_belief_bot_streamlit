@@ -2,7 +2,7 @@
 
 import streamlit as st
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import yaml
 import random
 from bot import BotStart, BotIssue, BotRateIssue, BotGenerateReaps, BotRateReap, BotEnd
@@ -12,50 +12,27 @@ from logger_setup import setup_logger
 from config import CurrentConfig
 from crud import (
     db_create_participant,
-    db_create_issue,
-    db_create_message,
-    db_create_reappraisal,
-    db_get_issue_by_id,
-    db_get_reappraisal_by_id,
-    db_update_issue,
-    db_update_reappraisal,
+    db_get_participant,
 )
 from db import get_session
+from models import (
+    StateEnum,
+    DomainEnum,
+    RoleEnum
+)
+from utils import disable_copy_paste
+from chat_session import load_chat
 
 # Set up logger
 logger = setup_logger()
 logger.setLevel(CurrentConfig.LOG_LEVEL)
 
-
-# Disable copy/paste by inserting javascript into default streamlit index.html
-GA_JS = """
-document.addEventListener('DOMContentLoaded', function() {
-    // Disable text selection
-    document.body.style.userSelect = 'none';
-
-    // Disable copy-paste events
-    document.addEventListener('copy', (e) => {
-        e.preventDefault();
-    });
-    document.addEventListener('paste', (e) => {
-        e.preventDefault();
-    });
-});
-"""
-index_path = pathlib.Path(st.__file__).parent / "static" / "index.html"
-soup = BeautifulSoup(index_path.read_text(), features="lxml")
-if not soup.find(id='custom-js'):
-    script_tag = soup.new_tag("script", id='custom-js')
-    script_tag.string = GA_JS
-    soup.head.append(script_tag)
-    index_path.write_text(str(soup))
-    
-    
-    
 # Initialize page
-st.set_page_config(page_title="Chatbot", page_icon="📖")
+st.set_page_config(page_title="Chatbot", page_icon="📖", layout="wide")
 st.title("Interviewer Chatbot")
 
+# Disable copy-paste
+disable_copy_paste(st)
 
 # Load bot messages
 with open("bot_msgs.yml", "r") as f:
@@ -64,122 +41,69 @@ with open("bot_msgs.yml", "r") as f:
 
 # Define the mapping of bot states to bot classes
 bot_steps = {
-    "start": BotStart,
-    "issue": BotIssue,
-    "rate_issue": BotRateIssue,
-    "generate_reaps": BotGenerateReaps,
-    "rate_reap": BotRateReap,
-    "end": BotEnd
+    StateEnum.start: BotStart,
+    StateEnum.issue: BotIssue,
+    StateEnum.rate_issue: BotRateIssue,
+    StateEnum.generate_reaps: BotGenerateReaps,
+    StateEnum.rate_reap: BotRateReap,
+    StateEnum.end: BotEnd
 }
+
+# Check for new session flag in URL and set default if missing
+# if "new_session" not in st.query_params or st.query_params["new_session"] not in ["0", "1"]:
+#     st.query_params["new_session"] = False
+# else:
+#     st.query_params["new_session"] = True if st.query_params["new_session"] == "1" else False
+
+# Check for Prolific ID in URL and throw error if missing
 if "prolific_id" not in st.query_params:
     st.error("Please provide a valid URL that includes the Prolific ID. Contact the researcher on Prolific for assistance.")
     st.stop()
-
-# Initialize the session state
-init_state = {
-    "messages": [],  # (role, content)
-    "state": "start",
-    "llm_model": CurrentConfig.LLM_MODEL,
-    "prolific_id": st.query_params["prolific_id"],
-    "started_ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    "issue_msgs": {"career": [], "relationship": []},
-    "rate_issue": {"career": {}, "relationship": {}}, # {career: {pos: 3, pos_changed: True, }}
-    "reaps": {"career": [], "relationship": []},
-    "rate_reap": {"career": [], "relationship": []},   # {career: [{success: 3, success_changed: True, }, {}]}
-    "cur_domain": "career" if random.random() < 0.5 else "relationship",
-    "survey_order": random.sample(["beliefs", "values"], 2),
-    # "cur_survey_idx": 0,
-    "show_chat": True,  # TODO
-    }
-for key, value in init_state.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# Initialize starting data in the database
-if st.session_state["state"] == "start":
-    # Initialize the participant in the database
-    try:
-        with get_session() as session:
-            # Create the participant
-            logger.info(f"Initializing participant -- prolific_id={st.session_state['prolific_id']}")
-            participant = db_create_participant(session, st.session_state["prolific_id"])
-            session.flush()
-            st.session_state["pid"] = participant.id
-            session.commit()
-            
-    except Exception as e:
-        logger.error(f"Error initializing participant -- prolific_id={st.session_state['prolific_id']}")
-        logger.exception(e)
-        st.error(CurrentConfig.ERROR_MESSAGE)
-        st.stop()
-    else:
-        logger.info(f"Participant initialized -- id={st.session_state['pid']}, prolific_id={st.session_state['prolific_id']}")
     
-    # Initialize issues and reappraisals in the database
-    try:
-        with get_session() as session:
-            
-            # Create two issues
-            issue_career = db_create_issue(session, st.session_state["pid"], domain="career")
-            issue_relationship = db_create_issue(session, st.session_state["pid"], domain="relationship")
-            session.flush()
-            st.session_state["issue_ids"] = {
-                "career": issue_career.id,
-                "relationship": issue_relationship.id
-            }
+# Set the session state prolific_id
+if st.query_params["prolific_id"] == "test":
+    # if prolific_id is "test", create a new unique test ID
+    st.session_state["prolific_id"] = "test-" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    st.query_params["prolific_id"] = st.session_state["prolific_id"]
+else:
+    st.session_state["prolific_id"] = st.query_params["prolific_id"]
+
+# if there is not an active streamlit session running, load the chat from the database or create a new chat
+if not st.session_state.get("active_session", False): 
+    logger.info(f"New chat session started for participant.id={st.session_state['prolific_id']}")
+    with get_session() as session:
+        # Load the participant from the database or create a new participant
+        participant = db_get_participant(session, st.session_state["prolific_id"])
+        if participant is None:
+            logger.info(f"No participant found -- Creating new participant for participant.id={st.session_state['prolific_id']}")
+            cur_domain = DomainEnum.career if random.random() < 0.5 else DomainEnum.relationship
+            participant = db_create_participant(session=session,
+                                                prolific_id=st.session_state["prolific_id"],
+                                                cur_domain=cur_domain)
             session.commit()
-    except Exception as e:
-        logger.error(f"Error initializing issues -- participant.id={st.session_state['pid']}")
-        logger.exception(e)
-        st.error(CurrentConfig.ERROR_MESSAGE)
-        st.stop()
-    else:
-        logger.info(f"Issues initialized -- participant.id={st.session_state['pid']}")
         
-    # Initialize reappraisals
-    try:   
-        # Create reappraisals
-        st.session_state["reappraisal_ids"] = {
-            "career": [],
-            "relationship": []
-        }
-        with get_session() as session:
-            for i in range(CurrentConfig.N_REAPPRAISALS):
-                reappraisal_career = db_create_reappraisal(session, 
-                                                           participant_id=st.session_state["pid"],
-                                                           domain="career", 
-                                                           issue_id=st.session_state["issue_ids"]["career"],
-                                                           reap_num=i+1)
-                reappraisal_relationship = db_create_reappraisal(session, 
-                                                                participant_id=st.session_state["pid"],
-                                                                domain="relationship", 
-                                                                issue_id=st.session_state["issue_ids"]["relationship"],
-                                                                reap_num=i+1)
-                session.flush()
-                st.session_state["reappraisal_ids"]["career"].append(reappraisal_career.id)
-                st.session_state["reappraisal_ids"]["relationship"].append(reappraisal_relationship.id)
-            session.commit()
-    except Exception as e:
-        logger.error(f"Error initializing reappraisals -- participant.id={st.session_state['pid']}")
-        logger.exception(e)
-        st.error(CurrentConfig.ERROR_MESSAGE)
-        st.stop()
-    else:
-        logger.info(f"Reappraisals initialized -- participant.id={st.session_state['pid']}")
+        # Load the chat session from the database or initialize a new chat session and set it to the session state
+        ss = load_chat(session=session, participant=participant)
+        st.session_state.update(ss)
+        session.commit()
         
-        
-        
-    
 # Log state
-logger.info(f"Current chat state: {st.session_state['state']}, participant.id={st.session_state['pid']}")
+logger.info(f"Current chat state: {st.session_state['cur_state']}, participant.id={st.session_state['prolific_id']}")
 
 # Get user input
 user_input = st.chat_input()
-logger.info(f"User input: {user_input}, participant.id={st.session_state['pid']}")
+logger.info(f"User input: {user_input}, participant.id={st.session_state['prolific_id']}, state={st.session_state['cur_state']}, domain={st.session_state['cur_domain']}")
+
+# Display the session state for debugging
+if CurrentConfig.DEBUG:
+    view_state = st.expander("View the session state")
+    with view_state:
+        st.write(st.session_state)
+        
 
 
 # Init the correct bot step
-bot = bot_steps[st.session_state["state"]](st)
+bot = bot_steps[st.session_state["cur_state"]](st)
 
 # Write existing messages to the chat  
 for msg in st.session_state["messages"]:
@@ -197,9 +121,10 @@ if user_input:
     bot.process_input(user_input)
 
 # Update the state
-old_state = st.session_state["state"]
+old_state = st.session_state["cur_state"]
 new_state, next_output_kwargs = bot.next_state()
-logger.info(f"Next chat state: {new_state}, participant.id={st.session_state['pid']}")
+logger.info(f"Next chat state: {new_state}, cur_domain={st.session_state['cur_domain']}, participant.id={st.session_state['prolific_id']}")
+
 
     
 # Init a new bot if needed for output
@@ -209,10 +134,4 @@ if old_state != new_state:
 # Generate the bot output
 bot.generate_output(**next_output_kwargs) # optional: for when next_state provides data for the output
 
-# Display the session state for debugging
-if CurrentConfig.DEBUG:
-    view_state = st.expander("View the session state")
-    with view_state:
-        st.write(st.session_state)
-        
 
