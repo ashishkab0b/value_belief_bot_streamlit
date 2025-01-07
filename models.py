@@ -55,8 +55,8 @@ class Participant(Base):
     cur_domain: Mapped[str] = mapped_column(SQLAlchemyEnum(DomainEnum), nullable=True)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at: Mapped[datetime] = mapped_column(default=None, nullable=True)
 
     # Relationships
@@ -90,8 +90,8 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at: Mapped[datetime] = mapped_column(default=None, nullable=True)
 
     # Relationships
@@ -122,8 +122,8 @@ class Issue(Base):
     # interview_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at: Mapped[datetime] = mapped_column(default=None, nullable=True)
 
     # Relationships
@@ -157,8 +157,8 @@ class Reappraisal(Base):
     relevance: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at: Mapped[datetime] = mapped_column(default=None, nullable=True)
 
     # Relationships
