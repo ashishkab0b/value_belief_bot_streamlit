@@ -1,0 +1,138 @@
+[
+    {
+    "name": "self-direction",
+    "description": "Self-direction involves independent thought and action, emphasizing the importance of freedom and creativity. Individuals who prioritize self-direction value their ability to make their own choices, explore new ideas, and express themselves without restriction.",
+    "example": [
+        {
+            "subvalue": "self-direction—thought",
+            "issue": "This year I started my own small business and it has been hard. Sales have not been as high as I had hoped, and it has honestly made me feel like I have kind of failed.",
+            "reappraisal": "Even though it is hard, I get a lot of creative freedom by running a small business. I get to explore different ideas while creating our products, which I may not be able to do with another job."
+        },
+        {
+            "subvalue": "self-direction—action",
+            "issue": "This year I started my own small business and it has been hard. Sales have not been as high as I had hoped, and it has honestly made me feel like I have kind of failed.",
+            "reappraisal": "Even though sales hasn't been as high yet, I have a number of ideas for things I can do to improve it such as marketing strategies and new products. I'm sure that if I keep pushing at it, things will improve."
+
+        }
+    ]
+    },
+    {
+    "name": "stimulation",
+    "description": "Stimulation refers to the pursuit of excitement, novelty, and challenge in life. Those who value stimulation seek out new experiences, adventure, and the thrill of the unknown, finding joy in dynamic and varied activities.",
+    "example": [
+        {
+            "issue": "This year I started my own small business and it has been hard. Sales have not been as high as I had hoped, and it has honestly made me feel like I have kind of failed.",
+            "reappraisal": "Though it has not been easy, running a small business has been exciting and new to me. It has challenged me and brought me a lot of learning opportunities."
+        }
+    ]
+    },
+    {
+    "name": "hedonism",
+    "description": "Hedonism is the pursuit of pleasure and sensuous gratification for oneself. It emphasizes the importance of enjoying life and experiencing sensory pleasures, often focusing on personal happiness and comfort.",
+    "example": [
+        { 
+            "issue": "I joined a wine club and we get together every Thursday to do wine tasting. However, I've noticed that it makes me tired the next day and I don't focus as well at work. It's a lot of fun and I don't want to stop going, but I'm worried about the impact it's having on my work performance.",
+            "reappraisal": "It's okay if my performance on Friday is not that great because I need to enjoy my life. It's only one day a week anyway and it's more important that I have some fun and relax."
+        }]
+    },
+    {
+    "name": "achievement",
+    "description": "Achievement values personal success through demonstrating competence according to social standards. Individuals who prioritize achievement strive for excellence, set and attain goals, and seek recognition and respect from others for their accomplishments.",
+    "example": [
+        {
+            "issue": "I have been really stressed out about my work lately. This is because I feel like I am not progressing quickly enough. I have also been very overworked recently. The fact that I have been taking on so many work tasks recently and have not gotten any news regarding either a potential raise, promotion, or both makes me feel undervalued. I wonder how much more I have to do. I feel like I am at a dead end.",
+            "reappraisal": "Even though I have had so much work stress recently, I know success does not come without hard work. My hard work is what got me my last promotion, and I have already accomplished a lot by getting to where I am."
+        }
+    ]
+    },
+    {
+    "name": "power",
+    "description": "Power involves the desire for social status and prestige, as well as control or dominance over people and resources. Those who value power seek to influence others, attain leadership positions, and achieve authority within social hierarchies.",
+    "example": [
+        {
+            "subvalue": "power—dominance",
+            "issue": "My boss is breathing down my neck about this project and I am feeling a lot of pressure to perform. I'm having trouble handling the stress and responsibility of leading this project.",
+            "reappraisal": "If I just get through this project, I'm pretty sure I'll get a promotion and then it will be me giving the orders."
+        },
+        {
+            "subvalue": "power—resources",
+            "issue": "Our company has recently gotten into a lot of issues with the government, and we are getting multiple fines. This seems to continue to happen and it has been really frustrating to deal with.",
+            "reappraisal": "We can pay the fines and our company will still be able to run. Money is not an issue for us, so we will be fine after resolving this issue."
+        }
+    ]
+    },
+    {
+    "name": "security",
+    "description": "Security emphasizes safety, harmony, and stability of society, relationships, and self. It involves a desire for protection against threats, ensuring a stable and predictable environment for oneself and loved ones.",
+    "example": [
+        {
+            "subvalue": "security—personal",
+            "issue": "My house was recently robbed and it has caused me a lot of emotional and financial stress. It was also really scary and I think I have some PTSD from it.",
+            "reappraisal": "It was a horrible thing to happen but thankfully I am safe and was not physically harmed in any way."
+        },
+        {
+            "subvalue": "security—societal",
+            "issue": "I'm really struggling with the state of our nation. With an upcoming election I cannot believe that the 2 candidates are the best we can come up with.",
+            "reappraisal": "Even though things feel out of control, we are still much better off than many other countries. Compared to other countries, we enjoy a great deal of societal stability."
+        }
+    ]
+    },
+    {
+    "name": "conformity",
+    "description": "Conformity involves the restraint of actions, inclinations, and impulses that are likely to upset or harm others or violate social expectations or norms. Those who value conformity strive to adhere to social rules and customs, maintaining order and harmony in their interactions.",
+    "example": [
+        {   
+            "subvalue": "conformity-interpersonal",
+            "issue": "In one of the clubs I am in, I often feel scared to voice my opinions because they are different from most people’s opinions. I wish I had more courage to speak up, because sometimes it makes me feel like my thoughts are overlooked.",
+            "reappraisal": "By not speaking up too much, I've done a good job at keeping the peace in the club. This is important because I don't want to cause any unnecessary tension."
+        },
+        {
+            "subvalue": "conformity—rules",
+            "issue": "I recently got into a pretty bad fight with my sister. I said some things that made her really upset. I disagreed with her actions and made it very obvious to her that I did not approve of them.",
+            "reappraisal": "At the end of the day, I believe I did the right thing. What she did was wrong and against the law, and I do not think she should do it again in the future."
+        }
+    ]
+    },
+    {
+    "name": "tradition",
+    "description": "Tradition values respect, commitment, and acceptance of the customs and ideas that one's culture or religion provides. It involves a deep appreciation for the past, upholding rituals, and preserving cultural heritage.",
+    "example": [
+        {
+            "issue": "I have been feeling disconnected from my family lately. We used to have weekly dinners together, but now everyone is so busy with work and other commitments that we rarely see each other.",
+            "reappraisal": "Even though we don't see each other as often as we used to, I can still cherish the memories of our family dinners and the traditions we shared. I can make an effort to schedule more family time and create new traditions to bring us closer together."
+        }
+    ]
+    },
+    {
+    "name": "benevolence",
+    "description": "Benevolence focuses on preserving and enhancing the welfare of those with whom one is in frequent personal contact, such as family and close friends (the 'in-group'). It involves acts of kindness, generosity, and a commitment to the well-being of others.",
+    "example": [
+        {
+            "subvalue": "benevolence—dependability",
+            "issue": "My mom recently had a stroke and it has been hard seeing her in those conditions. I am worried for her health, and it's been stressful caring for her during these times.",
+            "reappraisal": "At least I've been able to be a reliable source of help in her life and take care of my mom during this difficult time. I know she appreciates it."
+        },
+        {
+            "subvalue": "benevolence—caring",
+            "issue": "My mom has been on my case about finding a better job. My job involves physical labor and takes a toll on my body and my mom is badgering me about finding a job that is less physically demanding.",
+            "reappraisal": "I know my mom is just looking out for me and wants me to be healthy and happy. I appreciate that she cares about me enough to push me to find a job that is better for my health."
+        }
+    ]
+    },
+    {
+    "name": "universalism",
+    "description": "Universalism involves understanding, appreciation, tolerance, and protection for the welfare of all people and for nature. Those who value universalism seek social justice, equality, and environmental sustainability, advocating for the well-being of all living beings.",
+    "example": [
+        {
+            "subvalue": "universalism—concern",
+            "issue": "My team at work recently had a serious conversation about inequality and discrimination in the workplace, and it caused a lot of tension and discomfort among many people.",
+            "reappraisal": "Even though these conversations are uncomfortable, it is important to address these issues to create a more inclusive and equitable work environment. In the long run, these discussions will help us build a stronger and more diverse team."
+        },
+        {
+            "subvalue": "universalism—nature",
+            "issue": "One issue in my life is environmental issues. I believe this is an issue in my life because for the past 6 summers, the high average temperature has always exceeded the record highs. I live near the Gulf of Mexico so when the world's temperature gets affected; it is heavily exacerbated in the Winter and Summer. Storms have become more severe as of lately as well; with a tornado hitting my neighborhood which I cannot recall happening in my whole life living in it.",
+            "reappraisal": "Even though my state has extreme weather shifts due to irregular global climate changes it is still a livable area. I have been doing my own part to tackle Climate Change, trying my best to preserve the earth from degrading further."
+        }
+    ]
+    }
+]

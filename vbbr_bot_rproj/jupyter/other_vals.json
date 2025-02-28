@@ -1,0 +1,150 @@
+[
+    {
+        "name": "connection",
+        "description": "Valuing connection means prioritizing relationships and genuine interactions with others. It involves actively nurturing and appreciating emotional ties, communication, and mutual support in a variety of contexts in one's life."
+    },
+    {
+        "name": "interpersonal harmony",
+        "description": "Valuing interpersonal harmony means prioritizing peaceful and respectful relationships, often striving to avoid conflict and foster understanding among individuals. It involves being considerate of others' feelings and perspectives to maintain a positive social environment."
+    },
+    {
+        "name": "collaboration",
+        "description": "Valuing collaboration means recognizing and appreciating the importance of working together with others to achieve common goals, leveraging diverse skills and perspectives. It involves fostering a culture of communication, mutual respect, and shared responsibility to enhance collective effectiveness and innovation."
+    },
+    {
+        "name": "community",
+        "description": "Valuing community means recognizing and prioritizing the importance of collective well-being, mutual support, and shared goals over individual interests. It involves actively contributing to and participating in communal activities and initiatives that enhance the collective quality of life."
+    },
+    {
+        "name": "integrity",
+        "description": "Valuing integrity means prioritizing ethical behavior and strong moral principles above all other considerations. It involves consistently adhering to moral principles, even when it is challenging or inconvenient."
+    },
+    {
+        "name": "honesty",
+        "description": "Valuing honesty means prioritizing truthfulness even when it is difficult or inconvenient. It involves being transparent and trustworthy regardless of the consequences."
+    },
+    {
+        "name": "perseverance",
+        "description": "Valuing perseverance means appreciating the importance of persistent effort and resilience in the face of challenges, rather than giving up. It involves consistently striving towards goals despite obstacles, setbacks, and delays."
+    },
+    {
+        "name": "self-control",
+        "description": "Valuing self-control means prioritizing the ability to regulate one's behaviors, thoughts, and emotions in the face of temptations and impulses. It involves making conscious choices that align with long-term goals rather than succumbing to immediate gratifications."
+    },
+    {
+        "name": "benevolence",
+        "description": "Valuing benevolence means prioritizing kindness, compassion, and goodwill towards others in your actions and decisions. It involves a genuine desire to contribute positively to the well-being of individuals and society."
+    },
+    {
+        "name": "justice",
+        "description": "Valuing Justice means prioritizing fairness in all actions and decisions, ensuring that laws and actions are applied impartially. It involves a commitment to addressing and rectifying injustices in society, fostering a culture of accountability and ethical behavior."
+    },
+    {
+        "name": "patriotism",
+        "description": "Valuing patriotism means holding a deep respect and love for one's country, including its cultural heritage, values, and principles. It also involves a commitment to the nation's well-being and active participation in civic duties to support and improve the country."
+    },
+    {
+        "name": "family",
+        "description": "Valuing family means prioritizing the principles, traditions, and responsibilities that uphold the well-being and unity of the family unit. It involves fostering strong relationships, mutual respect, and commitment to supporting and caring for one another."
+    },
+    {
+        "name": "tradition",
+        "description": "Valuing tradition means appreciating and preserving customs, beliefs, and practices passed down through generations. It involves recognizing the importance of cultural heritage and maintaining continuity with the past."
+    },
+    {
+        "name": "conformity",
+        "description": "Valuing conformity means prioritizing adherence to social norms, rules, and expectations, often to maintain harmony and cohesion within a group. It emphasizes the importance of fitting in and aligning one's behavior and beliefs with those of the majority or authority."
+    },
+    {
+        "name": "power",
+        "description": "Valuing power means prioritizing the ability to influence, lead, and command people and situations. It often involves seeking positions or taking actions that enhance one's capacity to shape outcomes, exert influence, and assert one's authority."
+    },
+    {
+        "name": "duty",
+        "description": "Valuing duty means prioritizing the responsibilities and obligations of one's role, even when it requires personal sacrifices. It involves readiness to commit oneself to a goal which extends beyond their own personal goals."
+    },
+    {
+        "name": "activism",
+        "description": "Valuing activism means appreciating efforts to advocate for social, political, or environmental change. It involves recognizing the personal responsibility one has in taking action to shape one's society."
+    },
+    {
+        "name": "internal peace",
+        "description": "Valuing internal peace means prioritizing a harmonious and balanced inner state, free from internal conflict and turmoil. It involves cultivating a mindset and lifestyle that promote mental clarity, self-acceptance, and harmony, regardless of external chaos or challenges."
+    },
+    {
+        "name": "health",
+        "description": "Valuing health means prioritizing physical, mental, and emotional well-being through practices such as regular exercise, balanced nutrition, and stress management. It also involves making informed choices that promote long-term vitality and prevent illness."
+    },
+    {
+        "name": "wealth",
+        "description": "Valuing wealth means prioritizing the accumulation and preservation of financial assets and resources. It often involves making decisions that aim to enhance one's economic standing and viewing monetary success as a key indicator of personal achievement and security."
+    },
+    {
+        "name": "status",
+        "description": "Valuing status means placing importance on one's social standing, prestige, and recognition by others. It often involves seeking admiration, respect, and validation through achievements, possessions, or associations."
+    },
+    {
+        "name": "luxury",
+        "description": "Valuing luxury means appreciating and seeking high-quality, premium goods and experiences that often come with a significant cost. It emphasizes a preference for exclusivity, craftsmanship, and indulgence, often as a marker of status or personal reward."
+    },
+    {
+        "name": "success",
+        "description": "Valuing success means prioritizing achievements as a central aspect of one's life, often measuring well-being and self-worth through accomplishments. It entails a strong focus on attaining specific outcomes and recognizing the hard work, determination, and perseverance required to reach them."
+    },
+    {
+        "name": "pleasure",
+        "description": "Valuing pleasure means prioritizing experiences and activities that bring enjoyment and satisfaction. It involves seeking out and cherishing moments of joy and comfort while often aiming to minimize pain and discomfort."
+    },
+    {
+        "name": "environmentalism",
+        "description": "Valuing environmentalism means prioritizing the protection and preservation of the natural world, recognizing its intrinsic worth and the necessity of sustainable practices for the health of our planet. It involves advocating for policies and behaviors that reduce environmental impact, conserve resources, and promote biodiversity."
+    },
+    {
+        "name": "spirituality",
+        "description": "Valuing spirituality means prioritizing inner growth via a connection to something greater than oneself, such as a higher power or universal consciousness. It involves seeking meaning, purpose, and a sense of peace through practices like meditation, prayer, or self-reflection."
+    },
+    {
+        "name": "diversity",
+        "description": "Valuing diversity means appreciating and respecting the differences between people, including differences in backgrounds, perspectives, and abilities. It also involves actively promoting an inclusive culture where people feel empowered to contribute their unique strengths."
+    },
+    {
+        "name": "equality",
+        "description": "Valuing equality means recognizing and promoting the fair treatment and opportunities for all individuals, regardless of their differences such as race, gender, socioeconomic status, or other characteristics. It involves actively challenging and addressing systemic inequities and biases to ensure everyone has an equal chance to succeed and thrive."
+    },
+    {
+        "name": "wisdom",
+        "description": "Valuing wisdom means prioritizing the pursuit of insight, discernment, and sound judgment in decision-making and life choices. It involves seeking knowledge and experiences that foster personal growth, ethical behavior, and the well-being of oneself and others."
+    },
+    {
+        "name": "autonomy",
+        "description": "Valuing autonomy means prioritizing and respecting an individual's right to make their own decisions and govern their own actions. It emphasizes the importance of independence and self-determination in one's personal and professional life."
+    },
+    {
+        "name": "stability",
+        "description": "Valuing stability means prioritizing consistency, reliability, and predictability in various aspects of life, such as personal relationships, professional environments, and financial situations. It involves seeking environments and decisions that minimize risk and uncertainty to ensure a steady, predictable course of action."
+    },
+    {
+        "name": "safety",
+        "description": "Valuing safety means prioritizing the protection of oneself, one's loved ones, and one's community from harm. It involves continuously assessing and mitigating potential dangers to promote well-being and peace of mind."
+    },
+    {
+        "name": "drive",
+        "description": "Valuing drive means appreciating the determination and motivation that propel individuals to achieve challenging goals. It means placing high importance on perseverance, ambition, and the proactive pursuit of success in personal and professional endeavors."
+    },
+    {
+        "name": "creativity",
+        "description": "Valuing creativity means recognizing and appreciating the importance of original thinking and innovation. It involves recognizing the role of thinking out of the box in fostering progress, and enriching various aspects of life."
+    },
+    {
+        "name": "stimulation",
+        "description": "Valuing stimulation means seeking out experiences that are exciting, novel, and challenging. It reflects a desire for variety and dynamic activities that keep life interesting."
+    },
+    {
+        "name": "competency",
+        "description": "Valuing competency means prioritizing and appreciating skills, expertise, and the ability to perform tasks effectively and efficiently. It involves respecting individuals who demonstrate proficiency in their respective fields and consistently seeking to acquire mastery in one's own pursuits."
+    },
+    {
+        "name": "growth",
+        "description": "Valuing growth means prioritizing continuous personal and professional development, striving to improve in all domains of life. It involves embracing challenges, learning from experiences, and seeking opportunities for advancement."
+    }
+]

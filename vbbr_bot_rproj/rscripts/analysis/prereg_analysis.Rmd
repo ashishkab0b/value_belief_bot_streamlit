@@ -1,0 +1,1518 @@
+---
+title: "Analysis"
+author: "Ashish"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    theme: paper
+---
+Initialization
+===
+```{r, message=FALSE}
+rm(list=ls())
+library(rsurveyutils)
+library(lmerTest)
+library(here)
+library(sjPlot)
+library(tidyverse)
+library(ggthemr)
+library(modelr)
+library(tidybayes)
+library(emmeans)
+# theme_set(theme_bw())
+ggthemr("fresh")
+library(tidylog)
+```
+
+
+Preprocessing
+===
+
+Functions
+---
+```{r}
+```
+
+Read data
+---
+```{r, message=FALSE}
+filepath <- here("data/proc/vbbr_bot_jan2025_indiff.csv")
+df_indiff_raw <- read_csv(filepath)
+```
+
+```{r}
+df_reaps <- read_csv(here("data/proc/vbbr_bot_jan2025_reaps.csv")) %>% 
+  rename(
+    reap_text = text,
+    reap_success = success,
+    reap_believable = believable,
+    reap_valued = valued,
+    reap_relevance = relevance,
+    reap_id = id
+    ) %>% 
+  mutate(
+    reap_id = as.numeric(reap_id)
+  ) %>% 
+  group_by(pid) %>% 
+  mutate_at(vars(reap_success, reap_believable, reap_valued, reap_relevance), list(pc=scale)) %>%
+  ungroup
+
+
+# df_reaps %>% 
+#   arrange(pid, issue_id, reap_id) %>% view
+
+# read json
+val_df <- jsonlite::fromJSON("/Users/ashish/files/research/projects/vbr/precision_reap_bot_react_study/bot/val_list.json") 
+val_df %>% pull(name) %>% unique %>% sort
+```
+
+
+Process data
+---
+```{r, message=FALSE}
+df_indiff <- df_indiff_raw %>% 
+  filter(use_survey == "Yes") %>% 
+  filter(use_survey_beliefs == "Yes, I was paying attention" | is.na(use_survey_beliefs)) %>%
+  filter(use_survey_values == "Yes, I was paying attention" | is.na(use_survey_values))
+
+df_vals <- df_indiff %>% 
+  select(pid, starts_with("vals_")) %>% 
+  pivot_longer(cols = starts_with("vals_"), names_to = "value_name", values_to = "value_rating") %>% 
+  mutate(value_name = str_replace_all(value_name, "vals_", "")) %>% 
+  mutate(value_name = case_when(
+    value_name == "comm" ~ "community",
+    value_name == "collab" ~ "collaboration",
+    value_name == "selfcontrol" ~ "self_control",
+    TRUE ~ value_name
+  )) %>% 
+  mutate(value_name = case_when(
+    str_detect(value_name, "connection") ~ "interpersonalConnection",
+    str_detect(value_name, "diversity") ~ "humanDiversity",
+    str_detect(value_name, "growth") ~ "personalGrowth",
+    str_detect(value_name, "harmony") ~ "interpersonalHarmony",
+    str_detect(value_name, "persevere") ~ "perseverance",
+    str_detect(value_name, "self_control") ~ "selfControl",
+    str_detect(value_name, "environ") ~ "environmentalism",
+    TRUE ~ value_name
+  )) %>% 
+  filter(value_name %in% val_df$name) %>%  # filtering only values in study 2
+  group_by(pid) %>%
+  mutate(value_rating_pc = scale(value_rating, scale=F)) %>%
+  ungroup 
+  
+
+df_primals <- df_indiff %>% 
+  select(pid, starts_with("primal_")) %>% 
+  pivot_longer(cols = starts_with("primal_"), names_to = "primal_name", values_to = "primal_rating") %>% 
+  mutate(primal_name = str_replace_all(primal_name, "primal_", "")) %>% 
+  mutate(primal_name = case_when(
+    primal_name == "needsme" ~ "needs_me",
+    primal_name == "worthexploring" ~ "worth_exploring",
+    # primal_name == "selfcontrol" ~ "self_control",
+    TRUE ~ primal_name
+  )) %>% 
+  group_by(pid) %>%
+  mutate(primal_rating_pc = scale(primal_rating, scale=F)) %>%
+  ungroup
+# 
+# df_vals %>% 
+#   mutate(value_name = case_when(
+#     str_detect(value_name, "connection") ~ "interpersonalConnection",
+#     str_detect(value_name, "diversity") ~ "humanDiversity",
+#     str_detect(value_name, "growth") ~ "personalGrowth",
+#     str_detect(value_name, "harmony") ~ "interpersonalHarmony",
+#     str_detect(value_name, "persevere") ~ "perseverance",
+#     str_detect(value_name, "self_control") ~ "selfControl",
+#     str_detect(value_name, "environ") ~ "environmentalism",
+#     TRUE ~ value_name
+#   )) %>% 
+#   filter(!value_name %in% val_df$name) %>% 
+#   pull(value_name) %>% 
+#   unique %>% 
+#   sort
+```
+
+
+```{r}
+# primals_coding_results_fpath <- here("jupyter/primals_coding_results.csv")
+primals_coding_results_fpath <- here("jupyter/df_primals_coding.csv")
+df_primals_coding <- read_csv(primals_coding_results_fpath) %>% 
+  rename(primal_name = dimension)
+  # separate(custom_id, c("pid", "domain", "reap_id", "primal_name"), sep = "-", remove = FALSE) %>% 
+  # mutate(code = case_when(
+  #   str_detect(tolower(assistant_message), "code\\[0\\]") ~ 0,
+  #   str_detect(tolower(assistant_message), "code\\[1\\]") ~ 1,
+  #   TRUE ~ NA_real_
+  # ))
+
+df_p_code <- df_primals_coding %>% 
+  select(pid, domain, primal_name, reap_id, code, assistant_message) 
+df_p_code_wide <- df_p_code %>% 
+  select(-assistant_message) %>% 
+  mutate(primal_name = paste0("primals_", primal_name)) %>%
+  pivot_wider(names_from = primal_name, values_from = code) 
+
+
+# df_p_code %>% 
+#   inner_join(df_reaps) %>% 
+#   write_csv("~/Downloads/tmplasdkfjalskd.csv")
+
+# Failed lines 1
+vals_coding_results_failed_fpath_1 <- here("jupyter/df_other_vals_coding_failed.csv")
+df_vals_coding_failed_1 <- read_csv(vals_coding_results_failed_fpath_1) %>% 
+  rename(value_name = dimension) %>% 
+  mutate(batch_num = as.character(batch_num))
+  # separate(custom_id, c("pid", "domain", "reap_id", "value_name"), sep = "-", remove = FALSE) %>% 
+  # mutate(code = case_when(
+  #   str_detect(tolower(assistant_message), "code\\[0\\]") ~ 0,
+  #   str_detect(tolower(assistant_message), "code\\[1\\]") ~ 1,
+  #   TRUE ~ NA_real_
+  # ))
+# Failed lines 3
+vals_coding_results_failed_fpath_3 <- here("jupyter/df_other_vals_coding_failed_3.csv")
+df_vals_coding_failed_3 <- read_csv(vals_coding_results_failed_fpath_3) %>% 
+  rename(value_name = dimension) %>% 
+  mutate(batch_num = as.character(batch_num))
+  # separate(custom_id, c("pid", "domain", "reap_id", "value_name"), sep = "-", remove = FALSE) %>% 
+  # mutate(code = case_when(
+  #   str_detect(tolower(assistant_message), "code\\[0\\]") ~ 0,
+  #   str_detect(tolower(assistant_message), "code\\[1\\]") ~ 1,
+  #   TRUE ~ NA_real_
+  # ))
+
+# failed lines 2
+vals_coding_results_failed_fpath <- here("jupyter/df_other_vals_coding_failed_2.csv")
+df_vals_coding_failed <- read_csv(vals_coding_results_failed_fpath) %>% 
+  rename(value_name = dimension) %>% 
+  mutate(batch_num = as.character(batch_num)) %>% 
+  drop_na(code) %>% 
+  bind_rows(df_vals_coding_failed_3) %>% 
+  bind_rows(df_vals_coding_failed_1) %>% 
+  filter(!duplicated(custom_id))
+
+
+# vals_coding_results_fpath <- here("jupyter/values_coding_results.csv")
+vals_coding_results_fpath <- here("jupyter/df_other_vals_coding.csv")
+df_vals_coding <- read_csv(vals_coding_results_fpath) %>% 
+  rename(value_name = dimension) %>% 
+  filter(!custom_id %in% df_vals_coding_failed$custom_id) %>%
+  bind_rows(df_vals_coding_failed) %>% 
+  mutate(value_name = case_when(
+    str_detect(value_name, "connection") ~ "interpersonalConnection",
+    str_detect(value_name, "diversity") ~ "humanDiversity",
+    str_detect(value_name, "growth") ~ "personalGrowth",
+    str_detect(value_name, "harmony") ~ "interpersonalHarmony",
+    str_detect(value_name, "persevere") ~ "perseverance",
+    str_detect(value_name, "self_control") ~ "selfControl",
+    str_detect(value_name, "environ") ~ "environmentalism",
+    TRUE ~ value_name
+  )) %>% 
+  filter(value_name %in% val_df$name)  # filtering only values in study 2
+
+df_vals_coding %>% 
+  group_by(reap_id, value_name) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  pull(n) %>%
+  table()
+
+df_vals_coding %>%
+  group_by(reap_id, value_name) %>% 
+  summarize(n = n()) %>% 
+  filter(n > 1) 
+
+df_v_code <- df_vals_coding %>% 
+  select(pid, domain, value_name, reap_id, code, assistant_message) 
+df_v_code_wide <- df_v_code %>% 
+  select(-assistant_message) %>% 
+  mutate(value_name = paste0("vals_", value_name)) %>%
+  pivot_wider(names_from = value_name, values_from = code) 
+# count nas in df_v_code_wide
+df_v_code_wide %>% 
+  select(-pid, -domain, -reap_id) %>% 
+  map_dbl(~sum(is.na(.))) %>% 
+  sum
+
+```
+
+```{r}
+# all_val_names <- df_vals_coding$value_name %>% unique
+# d <- expand_grid(reap_id=unique(df_reaps_vals$reap_id), value_name=all_val_names) %>% 
+#   left_join(df_reaps_vals)
+# 
+# d %>% 
+#   filter(is.na(value_rating)) %>% 
+#   select(reap_id, value_name) %>%
+#   write_csv("~/Downloads/tmpasldkfj.csv")
+#   
+# # ----
+# 
+# # get failed lines
+# df_v_code_wide %>% 
+#   pivot_longer(cols = starts_with("vals_"), 
+#                names_pattern = "vals_(.*)",
+#                names_to = "value_name", 
+#                values_to = "code") %>% 
+#   filter(is.na(code)) %>% 
+#   mutate(value_name = case_when(
+#     str_detect(value_name, "interpersonalConnection") ~ "connection",
+#     str_detect(value_name, "humanDiversity") ~ "diversity",
+#     str_detect(value_name, "personalGrowth") ~ "growth",
+#     str_detect(value_name, "interpersonalHarmony") ~ "interpersonal_harmony",
+#     TRUE ~ value_name
+# 
+#   )) %>% #pull(value_name) %>% unique
+#   mutate(custom_id = paste0(pid, "-", domain, "-", reap_id, "-", value_name)) %>%
+#   write_csv("~/Downloads/tmpsladkfjas.csv")
+  
+```
+
+
+```{r}
+df_reaps_vals <- df_reaps %>% 
+  select(pid,
+         domain, 
+         reap_id, 
+         issue_id,
+         reap_text,
+         reap_valued, 
+         reap_success, 
+         reap_relevance, 
+         reap_believable, 
+         ends_with("_pc")) %>% 
+  mutate(reap_id = as.numeric(reap_id)) %>%
+  inner_join(df_v_code, by = c("pid", "domain", "reap_id")) %>% 
+  inner_join(df_vals) %>% 
+  mutate_at(vars(value_rating, 
+                 reap_valued,
+                 reap_success, 
+                 reap_relevance, 
+                 ends_with("_pc"),
+                 reap_believable) ,
+            list(z=scale))
+
+# df_reaps_vals %>% 
+#   write_csv("/Users/ashish/files/research/projects/vbr/fine_tuning_vbr/data/raw/value_belief_bot_streamlit/reap_vals.csv")
+df_indiff <- df_indiff %>% 
+  filter(pid %in% df_reaps$pid)
+```
+
+
+```{r}
+df_reaps_beliefs <- df_reaps %>% 
+  select(pid, domain, reap_id, reap_text, reap_success, reap_believable, reap_valued, reap_relevance) %>% 
+  mutate(reap_id = as.numeric(reap_id)) %>%
+  inner_join(df_p_code, by = c("pid", "domain", "reap_id")) %>% 
+  inner_join(df_primals) %>% 
+  filter(!primal_name %in% c("good", "safe", "enticing", "alive")) %>% 
+  mutate_at(vars(primal_rating_pc, reap_success, reap_believable, reap_valued, reap_relevance), list(z=scale)) 
+```
+
+
+```{r}
+df_issues_file <- read_csv(here("data/raw/sql_export/issues.csv"))
+
+df_issues <- df_issues_file %>% 
+  rename(pid = participant_id) %>% 
+  filter(pid %in% df_reaps$pid) %>% 
+  rename(issue_id = id)
+```
+
+```{r}
+df_issues %>% 
+  select(pid, issue_id, summary) %>% 
+  inner_join(df_reaps_vals) %>% 
+  # inner_join(df_reaps %>% 
+  #              select(pid, issue_id, reap_id, reap_text)) %>%
+  # inner_join(df_vals %>% 
+  #              select(pid, value_name) %>% 
+  #              filter(value_name %in% df_reaps_vals$value_name)) %>% 
+  writexl::write_xlsx(here("data/proc/vbbr_bot_jan2025_reaps_issues_EMMA_coding.xlsx"))
+```
+
+```{r}
+# df_uncertainty_raw <- read_csv(here("jupyter/uncertainty_coding_results.csv"))
+# df_uncertainty <- df_uncertainty_raw %>% 
+#   rowwise %>% 
+#   mutate(rating = mean(c(rating_1, rating_2, rating_3), na.rm=T)) %>% 
+#   ungroup
+```
+
+zoib
+---
+```{r}
+library(brms)
+zi_coi_zoib <- 
+  custom_family("zi_coi_zoib", 
+                dpars = c("mu", "zi", "coi", "phi"),
+                links = c("logit", "logit", "logit", "log"),
+                lb = c(0, 0, 0, 0),
+                ub = c(1, 1, 1, NA),
+                type = "real")
+stan_funs <- "
+  real zi_coi_zoib_lpdf(real y, real mu, real zi, real coi, real phi) { 
+    row_vector[2] shape = [mu * phi, (1 - mu) * phi];
+  
+    if (y == 0) { 
+      return log(zi); 
+    } else if (y == 1) {
+      return log1m(zi) + log(coi);
+    } else {
+      return beta_lpdf(y | shape[1], shape[2]) + log1m(zi) + log1m(coi);
+    }
+  }
+"
+stanvars <- stanvar(scode = stan_funs, block = "functions")
+
+
+posterior_predict_zi_coi_zoib <- function(i, prep, ...) {
+  mu <- brms::get_dpar(prep, "mu", i = i)
+  zi <- brms::get_dpar(prep, "zi", i = i)
+  coi <- brms::get_dpar(prep, "coi", i = i)
+  phi <- brms::get_dpar(prep, "phi", i = i)
+  
+  shape1 <- mu * phi
+  shape2 <- (1 - mu) * phi
+  
+  # Generate uniform random variables
+  u <- runif(prep$ndraws)
+  
+  # Compute cumulative probabilities
+  cdf_zero <- zi
+  cdf_one <- zi + (1 - zi) * coi
+  
+  # Initialize output vector
+  y <- numeric(prep$ndraws)
+  
+  # Assign outcomes based on cumulative probabilities
+  y[u < cdf_zero] <- 0
+  y[u >= cdf_zero & u < cdf_one] <- 1
+  
+  # For the remaining cases, draw from the beta distribution
+  beta_indices <- which(u >= cdf_one)
+  y[beta_indices] <- rbeta(length(beta_indices), shape1, shape2)
+  
+  return(y)
+}
+
+posterior_epred_zi_coi_zoib <- function(prep) {
+  # Extract distributional parameters from 'prep'
+  mu <- brms::get_dpar(prep, "mu")
+  zi <- brms::get_dpar(prep, "zi")    # Zero-inflation probability
+  coi <- brms::get_dpar(prep, "coi")  # Conditional one-inflation probability
+  
+  # Calculate the expected value E[Y]
+  EY <- (1 - zi) * (coi + (1 - coi) * mu)
+  
+  return(EY)
+}
+```
+
+Export coding sheet
+===
+```{r}
+set.seed(123)
+df_reaps_vals %>% 
+  select(pid, domain, reap_id, issue_id, reap_text, value_name) %>%
+  left_join(df_issues %>% select(pid, issue_id, summary), 
+            by=c("pid", "issue_id")) %>%
+  sample_n(200) %>% 
+  writexl::write_xlsx(here("data/proc/vbbr_bot_jan2025_reaps_vals_blind_coding.xlsx"))
+  
+```
+
+
+Import blind coding
+===
+```{r}
+df_coding_suze <- readxl::read_xlsx(here("data/vbbr_bot_jan2025_reaps_vals_blind_coding_SUZE_20250219.xlsx")) %>% 
+  rename(suze_code = Code) 
+df_coding_emma <- readxl::read_xlsx(here("data/vbbr_bot_jan2025_reaps_vals_blind_coding_EMMA_20250219.xlsx"))
+```
+
+
+```{r, echo=FALSE}
+# ------ End Preprocessing ------ #
+# ----- Run all chunks above -----#
+```
+
+
+```{r}
+df_indiff %>% 
+  filter(pid %in% df_reaps_vals$pid) %>% 
+  count(gender) %>% 
+  mutate(pr = (n*100)/sum(n)) %>% 
+  as.data.frame
+
+df_indiff %>% 
+  summarize(
+    mean_age = mean(age),
+    sd_age = sd(age, na.rm=T),
+    min_age = min(age),
+    max_age = max(age)
+  ) %>% 
+  as.data.frame
+
+df_indiff %>% 
+  select(matches("race_[0-9]+$")) %>% 
+  pivot_longer(everything()) %>% 
+  drop_na(value) %>% 
+  count(value) %>% 
+  mutate(pr = (n*100)/nrow(df_indiff)) %>% 
+  as.data.frame
+```
+
+Coding agreement
+===
+```{r}
+library(psych)
+d <- df_coding_suze %>% 
+  left_join(df_reaps_vals %>% 
+              select(pid, reap_id, value_name, code) %>% 
+              rename(gpt_code = code)) %>% 
+  select(suze_code, gpt_code) %>% 
+  as.data.frame
+
+cohen.kappa(d)
+
+sum(d$suze_code == d$gpt_code) / nrow(d)
+```
+
+```{r}
+
+d <- df_coding_emma %>% 
+  left_join(df_reaps_vals %>% 
+              select(pid, reap_id, value_name, code) %>% 
+              rename(gpt_code = code)) %>% 
+  select(emma_code, gpt_code) %>% 
+  as.data.frame
+
+cohen.kappa(d)
+
+sum(d$emma_code == d$gpt_code, na.rm=T) / nrow(d)
+```
+
+```{r}
+d <- df_coding_emma %>% 
+  left_join(df_coding_suze) %>% 
+  select(emma_code, suze_code) %>% 
+  as.data.frame
+
+cohen.kappa(d)
+
+sum(d$suze_code == d$emma_code, na.rm = T) / nrow(d)
+```
+
+
+
+
+
+Frequencies of beliefs
+===
+```{r}
+
+df_reaps_beliefs %>% 
+  group_by(primal_name) %>% 
+  count(code) %>% 
+  mutate(pr = n/sum(n)) %>%
+  mutate(code = paste0("code_", code)) %>%
+  pivot_wider(names_from = code, values_from = c(n, pr)) %>% 
+  arrange(n_code_1, .desc=T) %>% 
+  view
+  
+```
+
+
+Frequencies of values
+===
+```{r}
+df_reaps_vals %>% 
+  group_by(value_name) %>% 
+  count(code) %>% 
+  mutate(pr = n/sum(n)) %>%
+  mutate(code = paste0("code_", code)) %>%
+  pivot_wider(names_from = code, values_from = c(n, pr)) %>% 
+  arrange(n_code_1, .desc=T) %>% 
+  view
+
+```
+
+Efficacy of values
+===
+```{r}
+df_reaps_vals %>% 
+  filter(code == 1) %>%
+  group_by(value_name) %>% 
+  summarize(
+    mean_success = mean(reap_success),
+    sd_success = sd(reap_success),
+    mean_relevance = mean(reap_relevance),
+    mean_believable = mean(reap_believable),
+    mean_valued = mean(reap_valued),
+    n = n()
+  ) %>% 
+  arrange(mean_valued, .desc=T) %>% 
+  view
+```
+
+
+
+
+Distributions
+===
+
+Primals
+---
+```{r}
+df_primals %>% 
+  ggplot(aes(x = primal_rating)) +
+  geom_histogram(bins=20) + 
+  facet_wrap(~primal_name)
+```
+
+
+Bot enjoy
+---
+```{r}
+df_indiff %>% 
+  ggplot(aes(x = bot_enjoy)) +
+  geom_histogram()
+mean(df_indiff$bot_enjoy)
+median(df_indiff$bot_enjoy)
+sd(df_indiff$bot_enjoy)
+```
+
+Bot reuse
+---
+```{r}
+df_indiff %>% 
+  ggplot(aes(x = bot_reuse)) +
+  geom_histogram()
+mean(df_indiff$bot_reuse)
+median(df_indiff$bot_reuse)
+sd(df_indiff$bot_reuse)
+```
+
+Bot helpful
+---
+```{r}
+df_indiff %>% 
+  ggplot(aes(x = bot_helpful)) +
+  geom_histogram()
+mean(df_indiff$bot_helpful)
+median(df_indiff$bot_helpful)
+sd(df_indiff$bot_helpful)
+```
+
+Reap variables
+---
+```{r}
+mean(df_reaps$reap_success == 0)
+mean(df_reaps$reap_relevance == 0)
+mean(df_reaps$reap_believable == 0)
+mean(df_reaps$reap_valued == 0)
+mean(df_reaps$reap_success < 5)
+df_reaps$reap_success %>% hist
+df_reaps$reap_relevance %>% hist
+df_reaps$reap_believable %>% hist
+df_reaps$reap_valued %>% hist
+```
+
+Bot experience and primals
+===
+
+enjoy - improvable
+```{r}
+fit <- lm(bot_enjoy ~ primal_improvable, data=df_indiff)
+tab_model(fit)
+plot_model(fit, type="slope")
+```
+
+helpful - improvable
+```{r}
+fit <- lm(bot_helpful ~ primal_improvable, data=df_indiff)
+tab_model(fit)
+plot_model(fit, type="slope")
+```
+
+reuse - improvable
+```{r}
+fit <- lm(bot_reuse ~ primal_improvable, data=df_indiff)
+tab_model(fit)
+plot_model(fit, type="slope")
+
+```
+
+```{r}
+df_reaps_beliefs %>% 
+  group_by(primal_name) %>% 
+  count(code) %>%
+  mutate(pr = n/sum(n)) %>%
+  view
+```
+
+
+Outcome correlation
+===
+```{r}
+fit <- df_reaps %>% 
+  lmer(reap_success ~ reap_believable + (1|pid) + (1|domain), data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+Values and success
+===
+```{r}
+fit <- df_reaps_vals %>% 
+  lmer(reap_success_z ~ value_rating_pc_z * code 
+       + (1 | pid) 
+       # + (1 | value_name) 
+       # + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+
+
+fit <- df_reaps_vals %>% 
+  # mutate_at(vars(reap_success, value_rating_pc), ~./100) %>%
+  filter(code == 1) %>% 
+  lmer(reap_success ~ value_rating_pc
+       + (1 | pid) 
+       # + (value_rating_pc | value_name)
+       # + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="slope")
+```
+
+```{r}
+d <- df_reaps_vals %>%
+  filter(code == 1) %>%
+  mutate(reap_success = reap_success/100) %>% 
+  mutate(value_rating_pc = value_rating_pc/100)
+f <- bf(reap_success ~ value_rating_pc + (1|pid),
+        # sigma ~ value_rating_pc + (1|pid)
+        )
+fit <- brm(f, 
+           data=d, 
+           chains=4, 
+           cores=4, 
+           iter=5000, 
+           file = "models/success_linear.rds",
+           file_refit = "on_change",
+           warmup=1000)
+summary(fit)
+
+                
+epreds <- d %>% 
+  data_grid(value_rating_pc = seq_range(value_rating_pc, n = 200)) %>%
+  add_epred_draws(fit, re_formula = NA) 
+
+epreds %>%
+  ggplot(aes(x = value_rating_pc, y = .epred)) +
+  # stat_halfeye(position = position_dodge(0), scale=.2) + 
+  # stat_summary(aes(group = 1), geom="line") + 
+  stat_lineribbon() +
+  scale_fill_brewer() +
+  theme_bw()
+ggsave("plots/asem_congruence_success.png", width = 8, height = 6)
+
+
+
+                
+epreds <- d %>% 
+  data_grid(value_rating_pc = seq_range(value_rating_pc, n = 200)) %>%
+  add_epred_draws(fit, re_formula = NA) 
+epreds %>% 
+  group_by(reap_category) %>%
+  summarize(
+    mean = mean(.epred)
+  ) %>% 
+  as.data.frame
+
+
+```
+
+
+```{r}
+d <- df_reaps_vals %>% 
+  filter(code == 1) %>% 
+  left_join(df_indiff %>% 
+              select(pid, gender)) %>% 
+  filter(gender %in% c("Male", "Female"))
+fit <- lmer(reap_success_z ~ value_rating_pc_z * gender + 
+       + (1 | pid) 
+       # + (1 | value_name) 
+       # + (1 | domain)
+       , data=d)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+zoib
+---
+```{r}
+d <- df_reaps_vals %>%
+  mutate(reap_success = reap_success/100)
+f <- bf(reap_success ~ value_rating_pc_z * code + (1|pid), 
+        zi ~ value_rating_pc_z * code + (1|pid),
+        coi ~ value_rating_pc_z * code + (1|pid),
+        phi ~ value_rating_pc_z * code + (1|pid)
+)
+fit_success_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # backend = "cmdstanr",
+           algorithm = "meanfield",
+           control = list(adapt_delta = .85),
+           file = "models/success_zoib.rds",
+           # file_refit = "on_change")
+           file_refit = "always")
+summary(fit_success_zoib)
+pp_check(fit_success_zoib)
+```
+
+zoib no interaction
+---
+```{r}
+d <- df_reaps_vals %>%
+  filter(code == 1) %>%
+  mutate(reap_success = reap_success/100)
+mean(d$reap_success > .95)
+mean(d$reap_success == 1)
+mean(d$reap_success == 0)
+mean(d$reap_success < .05)
+f <- bf(reap_success ~ value_rating_pc_z + (1|pid), 
+        zi ~ value_rating_pc_z + (1|pid),
+        coi ~ value_rating_pc_z + (1|pid),
+        phi ~ value_rating_pc_z + (1|pid)
+)
+fit_success_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           backend = "cmdstanr",
+           control = list(adapt_delta = .9),
+           file = "models/success_zoib_noInt.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+summary(fit_success_zoib)
+pp_check(fit_success_zoib)
+
+```
+
+
+
+giving or getting mentorship - same for leadership
+clarify in second reframing
+put two reframings before questions about reframigns - counter balance
+
+thinking about issue from this perspective
+
+for address waht you care about add aassuming it's factually true
+add use survyes
+
+Values and valued
+===
+```{r}
+fit <- df_reaps_vals %>% 
+  # lmer(reap_valued_pc_z ~ value_rating_pc_z * code
+  lmer(reap_valued_z ~ value_rating_pc_z * code
+       + (1 | pid) 
+       + (1 | value_name) 
+       + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+
+
+fit <- df_reaps_vals %>% 
+  filter(code == 1) %>% 
+  # lmer(reap_valued_pc_z ~ value_rating_pc_z
+  lmer(reap_valued_z ~ value_rating_pc_z
+       + (value_rating_pc_z | pid) 
+       # + (1 | value_name) 
+       # + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+zoib
+---
+```{r}
+d <- df_reaps_vals %>%
+  mutate(reap_valued = reap_valued/100)
+
+f <- bf(reap_valued ~ value_rating_pc_z * code + (1|pid), 
+        zi ~ value_rating_pc_z * code + (1|pid),
+        coi ~ value_rating_pc_z * code + (1|pid),
+        phi ~ value_rating_pc_z * code + (1|pid)
+)
+
+fit_valued_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # control = list(adapt_delta = .85),
+           file = "models/valued_zoib.rds",
+           # file_refit = "on_change")
+           file_refit = "always")
+summary(fit_valued_zoib)
+pp_check(fit_valued_zoib)
+```
+
+
+zoib no interaction
+---
+```{r}
+
+d <- df_reaps_vals %>%
+  filter(code == 1) %>% 
+  mutate(reap_valued = reap_valued/100)
+
+f <- bf(reap_valued ~ value_rating_pc_z + (1|pid), 
+        zi ~ value_rating_pc_z + (1|pid),
+        coi ~ value_rating_pc_z + (1|pid),
+        phi ~ value_rating_pc_z + (1|pid)
+)
+
+fit_valued_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # control = list(adapt_delta = .85),
+           file = "models/valued_zoib_noInt.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+summary(fit_valued_zoib)
+pp_check(fit_valued_zoib)
+```
+
+
+Values and believability
+===
+```{r}
+fit <- df_reaps_vals %>% 
+  lmer(reap_believable_z ~ value_rating_pc_z * code + (1 |pid) + (1 |value_name) + (1|domain), data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+zoib
+---
+```{r}
+d <- df_reaps_vals %>%
+  mutate(reap_believable = reap_believable/100)
+
+f <- bf(reap_believable ~ value_rating_pc_z * code + (1|pid), 
+        zi ~ value_rating_pc_z * code + (1|pid),
+        coi ~ value_rating_pc_z * code + (1|pid),
+        phi ~ value_rating_pc_z * code + (1|pid)
+)
+
+fit_believable_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # control = list(adapt_delta = .85),
+           file = "models/believable_zoib.rds",
+           # file_refit = "on_change")
+           file_refit = "always")
+
+summary(fit_believable_zoib)
+pp_check(fit_believable_zoib)
+
+```
+
+
+
+Values and relevance
+===
+```{r}
+d <- df_reaps_vals %>%
+  mutate(reap_relevance = reap_relevance/100) %>% 
+  mutate(value_rating_pc = value_rating_pc/100)
+f <- bf(reap_relevance ~ value_rating_pc + (1|pid))
+fit <- brm(f, 
+           data=d, 
+           chains=4, 
+           cores=4, 
+           iter=5000, 
+           file = "models/relevance_linear.rds",
+           warmup=1000)
+summary(fit)
+
+```
+
+
+```{r}
+hist(df_reaps_vals$reap_relevance)
+mean(df_reaps_vals$reap_relevance == 1)
+mean(df_reaps_vals$reap_relevance > 95)
+mean(df_reaps_vals$reap_relevance == 0)
+fit <- df_reaps_vals %>% 
+  lmer(reap_relevance ~ value_rating_pc * code 
+       + (1 | pid) 
+       + (1 | value_name) 
+       + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+```{r}
+fit <- df_reaps_vals %>% 
+  filter(code == 1) %>% 
+  lmer(reap_relevance_z ~ value_rating_pc_z +
+       + (1 | pid) 
+       # + (1 | value_name) 
+       # + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+```{r}
+fit <- df_reaps_vals %>% 
+  mutate(reap_relevance = reap_relevance/100) %>% 
+  filter(code == 1) %>%
+  lmer(reap_relevance ~ value_rating_pc
+       + (1 | pid) 
+       + (1 | value_name) 
+       + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+```{r}
+
+fit <- df_reaps_vals %>% 
+  lmer(reap_relevance_z ~ value_rating_pc_z * code 
+       + (1 | pid) 
+       + (1 | value_name) 
+       + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+```{r}
+
+fit <- df_reaps_vals %>% 
+  filter(code == 1) %>%
+  lmer(reap_relevance_z ~ value_rating_pc_z 
+       + (value_rating_pc_z | pid) 
+       + (value_rating_pc_z | value_name) 
+       + (value_rating_pc_z | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+zoib
+---
+```{r}
+d <- df_reaps_vals %>%
+  mutate(reap_relevance = reap_relevance/100)
+
+f <- bf(reap_relevance ~ value_rating_pc_z * code + (1|pid), 
+        zi ~ value_rating_pc_z * code + (1|pid),
+        coi ~ value_rating_pc_z * code + (1|pid),
+        phi ~ value_rating_pc_z * code + (1|pid)
+)
+
+fit_relevance_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # control = list(adapt_delta = .85),
+           file = "models/relevance_zoib.rds",
+           # file_refit = "on_change")
+           file_refit = "always")
+
+summary(fit_relevance_zoib)
+pp_check(fit_relevance_zoib)
+```
+
+```{r}
+
+f <- bf(reap_relevance ~ 1 + (1|pid), 
+        zi ~ 1 + (1|pid),
+        coi ~ 1 + (1|pid),
+        phi ~ 1 + (1|pid)
+)
+fit_relevance_intercept_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # prior = priors,
+           # control = list(adapt_delta = .95, max_treedepth = 15),
+           file = "models/relevance_zoib_intercept.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+```
+
+zoib no interaction
+---
+```{r}
+d <- df_reaps_vals %>% 
+  filter(code == 1) %>%
+  mutate(reap_relevance = reap_relevance/100)
+
+
+f <- bf(reap_relevance ~ 1 + (1|pid), 
+        zi ~ value_rating_pc_z + (1|pid),
+        coi ~ value_rating_pc_z + (1|pid),
+        phi ~ 1 + (1|pid)
+)
+priors <- c(
+  # Fixed effects (slopes)
+  prior(normal(0, 1), class = "b"),
+  prior(normal(0, 1), class = "b", dpar = "zi"),
+  prior(normal(0, 1), class = "b", dpar = "coi"),
+  prior(normal(0, 1), class = "b", dpar = "phi"),
+
+  # Random effect standard deviations (regularizing priors)
+  prior(exponential(2), class = "sd"),  # For main model
+  prior(exponential(2), class = "sd", dpar = "zi"),  # Zero-inflation
+  prior(exponential(2), class = "sd", dpar = "coi"), # One-inflation
+  prior(exponential(2), class = "sd", dpar = "phi")  # Dispersion
+)
+# fit <- brm(f,
+#            data = d,
+#            family = zi_coi_zoib,
+#            chains = 4,
+#            cores = 4,
+#            iter = 5000,
+#            warmup = 2000,
+#            stanvars = stanvars,
+#            prior = priors,
+#            sample_prior = "only",
+# )
+# pp_check(fit)
+# summary(fit)
+fit_relevance_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           backend = "cmdstanr",
+           # prior = priors,
+           # control = list(adapt_delta = .95, max_treedepth = 15),
+           file = "models/relevance_zoib_noInt.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+
+summary(fit_relevance_zoib)
+pp_check(fit_relevance_zoib)
+```
+
+```{r}
+
+```
+
+
+zoib no interaction no ranef
+---
+```{r}
+d <- df_reaps_vals %>% 
+  filter(code == 1) %>%
+  mutate(reap_relevance = reap_relevance/100)
+
+
+f <- bf(reap_relevance ~ value_rating_pc_z, 
+        zi ~ value_rating_pc_z,
+        coi ~ value_rating_pc_z,
+        phi ~ value_rating_pc_z
+)
+# priors <- c(
+#   prior(normal(0, 1), class = "b"),          
+#   prior(normal(0, 1), class = "b", dpar = "zi"),  
+#   prior(normal(0, 1), class = "b", dpar = "coi"),
+#   prior(normal(0, 1), class = "b", dpar = "phi")
+# )
+# fit <- brm(f,
+#            data = d,
+#            family = zi_coi_zoib,
+#            chains = 4,
+#            cores = 4,
+#            iter = 5000,
+#            warmup = 2000,
+#            stanvars = stanvars,
+#            prior = priors,
+#            sample_prior = "only",
+# )
+# pp_check(fit)
+# summary(fit)
+fit_relevance_zoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           # prior = priors,
+           # control = list(adapt_delta = .95, max_treedepth = 15),
+           file = "models/relevance_zoib_noInt.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+
+summary(fit_relevance_zoib)
+pp_check(fit_relevance_zoib)
+```
+
+Do llms pick up on values and put the right values in
+===
+gonna do a logistic regression to see if value rating predicts the probability of whether a value will be included or not
+```{r}
+
+fit <- df_reaps_vals %>% 
+  mutate(value_rating_pc = value_rating_pc/100) %>%
+  glmer(code ~ value_rating_pc 
+        + (value_rating_pc|pid) 
+        + (value_rating_pc|value_name), 
+        family=binomial, 
+        data=.)
+summary(fit)
+tab_model(fit)
+
+# fit <- df_reaps_vals %>% 
+#   mutate(value_rating_pc = value_rating_pc/100) %>%
+#   glmer(code ~ value_rating_pc 
+#         + (1|pid) 
+#         + (1|value_name), 
+#         family=binomial, 
+#         data=.)
+# summary(fit)
+# tab_model(fit)
+```
+
+```{r}
+
+fit <- df_reaps_vals %>% 
+  group_by(pid, domain, issue_id, value_name) %>% 
+  summarize(
+    value_rating_pc = mean(value_rating_pc),
+    code = max(code)
+  ) %>% 
+  ungroup %>% 
+  mutate(value_rating_pc = value_rating_pc/100) %>%
+  glmer(code ~ value_rating_pc 
+        + (value_rating_pc|pid) 
+        + (value_rating_pc|value_name), 
+        family=binomial, 
+        data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="pred")
+ggsave("~/Downloads/tmp_plot.png", width=8, height=6)
+```
+
+shuffled
+```{r}
+
+
+shuffled_values_mod <- function(){
+  df_pids <- df_reaps_vals %>% 
+    dplyr::select(pid) %>% 
+    dplyr::filter(!duplicated(pid)) %>% 
+    dplyr::mutate(pid_map = sample(pid))
+
+  d <- df_reaps_vals %>% 
+    dplyr::select(-value_rating_pc) %>%
+    dplyr::group_by(pid, domain, issue_id, value_name) %>% 
+    dplyr::summarize(
+      code = max(code)
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::left_join(df_pids) %>% 
+    dplyr::select(-pid) %>% 
+    dplyr::rename(pid = pid_map) %>% 
+    dplyr::left_join(df_vals %>% 
+                select(pid, value_name, value_rating_pc)) %>%
+    dplyr::mutate(value_rating_pc = value_rating_pc/100)
+  
+  fit <- d %>%
+    glmer(code ~ value_rating_pc 
+          + (value_rating_pc|pid) 
+          + (value_rating_pc|value_name), 
+          family=binomial, 
+          data=.)
+  return(broom.mixed::tidy(fit))
+}
+
+mods <- map(1:500, ~shuffled_values_mod())
+
+# save to disk
+# saveRDS(mods, "models/shuffled_values_mods.rds")
+mods <- readRDS("models/shuffled_values_mods.rds") 
+
+bind_rows(mods, .id="iter") %>% 
+  mutate(iter = as.numeric(iter)) %>% 
+  group_by(term) %>% 
+  summarize(
+    mean = mean(estimate),
+    or = mean(exp(estimate)),
+    hdi_low = HDInterval::hdi(exp(estimate), credMass = .95)[["lower"]],
+    hdi_hi = HDInterval::hdi(exp(estimate), credMass = .95)[["upper"]],
+    sd = sd(estimate)
+  ) %>% 
+  ungroup() 
+
+HDInterval::hdi(c(1, 2, 3, 4, 5), credMass = .95)[["lower"]]
+```
+
+
+
+
+
+Beliefs and success
+===
+```{r}
+fit <- df_reaps_beliefs %>% 
+  lmer(reap_success_z ~ primal_rating_pc_z * code 
+       + (1|pid) 
+       + (1|primal_name)
+       + (1|domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+```{r}
+
+d <- df_reaps_beliefs %>%
+  mutate(reap_success = reap_success/100)
+f <- bf(reap_success ~ primal_rating_pc * code + (1|primal_name))
+# f <- bf(reap_success ~ primal_rating_pc * code + (1|pid) + (1|primal_name) + (1|domain))
+fit_success_customZoib <- brm(f,
+           data = d,
+           family = zi_coi_zoib,
+           chains = 4,
+           cores = 4,
+           iter = 5000,
+           warmup = 1000,
+           stanvars = stanvars,
+           control = list(adapt_delta = .85),
+           file = "models/success_customZoib.rds",
+           file_refit = "on_change")
+           # file_refit = "always")
+summary(fit)
+```
+
+Primal present only rows
+---
+```{r}
+fit <- df_reaps_beliefs %>% 
+  filter(code == 1) %>%
+  lmer(reap_success ~ primal_rating_pc + (1|pid) + (primal_rating_pc|primal_name) + (1|domain), data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+Individual primals
+---
+```{r}
+df_mods <- df_reaps_beliefs %>% 
+  group_by(primal_name) %>% 
+  nest() %>%
+  mutate(fit = map(data, ~lmer(reap_success ~ primal_rating_pc * code + (1|pid) + (1|domain), data=.))) %>%
+  mutate(params = map(fit, broom.mixed::tidy)) %>% 
+  select(-data) %>% 
+  unnest(params) 
+
+df_mods %>% 
+  filter(term == "primal_rating_pc:code") %>% 
+  view
+```
+
+Domain specific
+---
+```{r}
+fit <- df_reaps_beliefs %>% 
+  filter(domain == "career") %>% 
+  lmer(reap_success_z ~ primal_rating_pc_z * code 
+       + (1|pid) 
+       + (1|primal_name)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+fit <- df_reaps_beliefs %>% 
+  filter(domain == "relationship") %>% 
+  lmer(reap_success_z ~ primal_rating_pc_z * code 
+       + (1|pid) 
+       + (1|primal_name)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+logistic
+---
+```{r}
+
+fit <- df_reaps_beliefs %>% 
+  mutate(reap_success = if_else(reap_success > 0, 1, 0)) %>%
+  glmer(reap_success ~ primal_rating_pc_z * code 
+       + (1|pid) 
+       + (1|domain)
+       + (1|primal_name),
+       family = binomial,
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+
+Beliefs and believability
+===
+
+```{r}
+fit <- df_reaps_beliefs %>% 
+  lmer(reap_believable_z ~ primal_rating_pc_z * code + (1|pid) + (1|primal_name) + (1|domain), data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+Beliefs and valued
+===
+```{r}
+fit <- df_reaps_beliefs %>% 
+  lmer(reap_valued_z ~ primal_rating_pc_z * code + (1|pid) + (1|primal_name) + (1|domain), data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+
+```
+
+Beliefs and relevance
+===
+```{r}
+fit <- df_reaps_beliefs %>% 
+  lmer(reap_relevance_z ~ primal_rating_pc_z * code 
+       + (1 | pid) 
+       + (1 | primal_name) 
+       + (1 | domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+predict success based on all other vars
+===
+```{r}
+d <- df_reaps_beliefs %>%
+  group_by(pid) %>%
+  mutate_at(vars(reap_success, reap_believable, reap_valued, reap_relevance), list(pc = ~scale(., scale=F, center=T))) %>%
+  ungroup() %>%
+  mutate_at(vars(ends_with("_pc"), reap_success), list(z = ~scale(., scale=T))) 
+fit <- d %>% 
+  lmer(reap_success_z ~ reap_believable_pc_z + reap_valued_pc_z + reap_relevance_pc_z 
+       + (1 | pid) 
+       + (1 | primal_name) 
+       + (1 | domain)
+       , data=.)
+tab_model(fit)
+```
+
+Uncertainty moderator of belief congruence
+===
+```{r}
+d <- df_reaps_beliefs %>% 
+  left_join(df_uncertainty %>% 
+              select(pid, domain, rating))
+
+fit <- d %>% 
+  lmer(reap_success_z ~ primal_rating_pc_z * code * rating
+       + (1|pid) 
+       + (1|primal_name)
+       + (1|domain)
+       , data=.)
+summary(fit)
+tab_model(fit)
+plot_model(fit, type="int")
+```
+
+Session Info
+===
+```{r}
+sessionInfo()
+```
+
+```{r}
+df = readxl::read_excel("~/Downloads/VBR_congruence_20240609_sample.xlsx")
+df %>% 
+  mutate(row = row_number() + 1) %>% 
+  filter(!is.na(code_binary)) %>% 
+  mutate(agree = code_binary == gpt_code_binary) %>% 
+  filter(!agree) %>% 
+  view
+```
+
+
+
+

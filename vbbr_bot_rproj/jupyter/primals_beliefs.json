@@ -1,0 +1,106 @@
+[
+    {
+        "name": "Abundant",
+        "description": "This belief concerns the degree to which opportunities and resources abound rather than scarcity. Central metaphors are the Garden of Eden and a barren wasteland."
+    },
+    {
+        "name": "Acceptable",
+        "description": "This belief concerns whether most things and situations require us to accept present conditions and move on or to reject them and strive to alter matters."
+    },
+    {
+        "name": "Beautiful",
+        "description": "This belief concerns the overall and typical aesthetic quality of the universe. It holds that beauty, of all different types, pervades all things. Its opposite is the belief that ugliness, in all its forms, is the defining quality of most things and situations."
+    },
+    {
+        "name": "Changing",
+        "description": "Is the world a vortex of change? Of special interest to ancient philosophers, this belief concerns the extent to which the world is defined by flux. It is not meant to imply that change is better or worse than staying the same but just that the natural state of all things is to not stay the same for long. The opposite is not the belief that nothing changes but that nothing of much importance ever changes."
+    },
+    {
+        "name": "Cooperative",
+        "description": "This primal concerns the degree to which the principles governing the world are trust, cooperation, and teamwork rather than brutal, cutthroat, and unceasing competition."
+    },
+    {
+        "name": "Funny",
+        "description": "This belief asserts that humor permeates all situations and can readily be found if one looks for it. Its opposite is merely the absence of humor and does not posit anything in particular, such as solemnity or tedium."
+    },
+    {
+        "name": "Harmless",
+        "description": "This belief asserts that most things and situations are safe and benign. Its opposite holds the world is dangerous and scary, with threats lurking all around."
+    },
+    {
+        "name": "Hierarchical",
+        "description": "Are things better or worse or just different? This belief concerns whether things can typically be ranked in order of importance or value. It involves an assumption about the extent to which difference implies something is better or worse. On the opposite end is the belief that distinctions don’t matter and difference is largely meaningless because it lacks value implications. Most things, situations, and even people are not better or worse than each other."
+    },
+    {
+        "name": "Improvable",
+        "description": "Beyond simply changing things (which may involve other ideas like fragility), this belief concerns whether or not most things and situations are responsive to our efforts to make them better. The opposite view holds that the world is rigid, inflexible, and unresponsive to efforts to improve it."
+    },
+    {
+        "name": "Intentional",
+        "description": "Are most things random or is there some sort of purpose behind them? This belief concerns the extent to which intention is behind events and situations though it does not specify what that intention is or where it comes from, whether it be God, many gods, Mother Earth, fate, or something else. Its opposite asserts only a lack of intention and not necessarily meaninglessness."
+    },
+    {
+        "name": "Interactive",
+        "description": "This belief is about the degree to which what is happening relates to you or something you’ve done. In this view, many events—including events like weather, traffic jams, job offers, or bumping into an old friend—may be sending you a message or occurring in response to your actions. The opposite belief holds that the world and what is happening is largely indifferent to you."
+    },
+    {
+        "name": "Interconnected",
+        "description": "This belief holds that all things and situations are connected to each other in fundamental ways. Its opposite does not assert that nothing is connected but does hold that the world is largely full of mostly independent entities or situations that can be examined, understood, and dealt with in isolation."
+    },
+    {
+        "name": "Interesting",
+        "description": "This belief concerns whether or not the world is fascinating and the unknown is likely to be interesting. Its opposite holds that most things are dull and tedious and the unknown is likely to be so as well."
+    },
+    {
+        "name": "Just",
+        "description": "Is the universe a place where you get what you deserve and deserve what you get? This primal can be thought of as a belief in cosmic fairness, proportionality, karma, rewarding righteousness and judging sin, Newton’s 3rd law, or just the idea that what goes around comes around. Its opposite holds that the world is a fundamentally unfair place where your—or anyone’s—chance of getting what you deserve is slim to none."
+    },
+    {
+        "name": "Meaningful",
+        "description": "This belief concerns value in the world. On the one hand, most things matter and have worth. On the other, most things are pointless. What “mattering” means is not specified."
+    },
+    {
+        "name": "Needs Me",
+        "description": "The primal world belief Needs Me concerns whether the world needs you, specifically you, for an important task or to play some particular role. Its opposite holds that the world lacks any particular need for you: though the world may still have needs, you are interchangeable."
+    },
+    {
+        "name": "Pleasurable",
+        "description": "This belief assesses the typical hedonic value of most things and situations. On the one hand, the world is soft, pleasant, pleasurable, easy, and warm. On the other hand, most things sting, poke, or aggravate in some way, and most situations are uncomfortable and hard, even miserable."
+    },
+    {
+        "name": "Progressing",
+        "description": "This primal is unusually concrete. Instead of describing a natural tendency to improve (which would be Regenerative) or how hard it is to improve (which would be Improvable), Progressing concerns whether the world is actually improving or getting worse. However, Progressing does not specify how the world is getting better or worse. That is up to the person."
+    },
+    {
+        "name": "Regenerative",
+        "description": "This belief concerns the universe’s default, natural tendency that permeates most things and situations. If left to its own devices, what typically happens? Do most things and situations naturally heal, stabilize, and strengthen or is the natural tendency of all things to devolve, weaken, and decay."
+    },
+    {
+        "name": "Stable",
+        "description": "This belief concerns the degree to which most things are stable and resilient to shock as opposed to fragile and about to fall apart. It is not meant to assess opinions specific to global environmental health such as climate change though it may be related."
+    },
+    {
+        "name": "Understandable",
+        "description": "This belief concerns how hard or easy most situations, entities, skills, and topics are to learn and figure out. Though related to belief about one’s own intelligence and abilities, it is conceptually more associated with a quality of the world itself and whether most things and situations are readily comprehensible."
+    },
+    {
+        "name": "Worth Exploring",
+        "description": "This belief holds that most things and situations are worth trying, exploring, or learning more about. Its opposite entails only that it is not worthwhile to explore most things and does not posit why. It could be boring, dangerous, ugly, or something else."
+    },
+    {
+        "name": "Good",
+        "description": "Most things in the world are good and positive."
+    },
+    {
+        "name": "Safe",
+        "description": "The world is a secure place without pervasive danger."
+    },
+    {
+        "name": "Enticing",
+        "description": "The world is captivating and inspires curiosity and exploration."
+    },
+    {
+        "name": "Alive",
+        "description": "The world is full of purpose and vitality."
+    }
+]
