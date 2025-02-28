@@ -15,64 +15,76 @@ output:
 Initialization
 ===
 ```{r, message=FALSE}
+rm(list=ls())
 # devtools::install_github("amehtaSF/rsurveyutils")
 library(rsurveyutils)
 library(qualtRics)
 library(here)
 library(tidyverse)
 library(tidylog)
+library(lubridate)
 theme_set(theme_bw())
+```
+
+```{r}
+clean_names <- function(df) {
+  df %>%
+    rename_with(~ .x %>%
+                  str_replace_all("StartDate", "start_date") %>% # Replace "StartDate" with "start_date
+                  str_replace_all("EndDate", "end_date") %>%     # Replace "EndDate" with "end_date"
+                  str_replace_all("RecordedDate", "recorded_date") %>% # Replace "RecordedDate" with "recorded_date"
+                  str_replace_all("IPAddress", "ip_address") %>% 
+                  tolower() %>%                  # Convert to lowercase
+                  str_replace_all("[^[:alnum:]]", "_") %>% # Replace non-alphanumeric with "_"
+                  str_replace_all("_+", "_") %>% # Replace multiple "_" with a single "_"
+                  str_remove_all("^_|_$")        # Remove leading/trailing "_"
+    )
+}
 ```
 
 
 Preprocessing
 ===
 
+Gather data
+---
+```{r}
+# gather_script_fpath <- here("rscripts/gather.sh")
+# system(paste("source ~/.bash_profile && bash", gather_script_fpath))
+```
+
+a
+
 Read data
 ---
 ```{r}
 filepath <- sprintf("%s/vbbr_bot_jan2025.csv", recent_date_dir(here("data/raw")))
-df_file <- read_survey(here(filepath)) %>% 
-  janitor::clean_names()
+df_file_round1 <- read_survey(here(filepath))
 
-df_file %>%
-  names %>%
-  cat(sep = "\n")
-```
+filepath <- sprintf("%s/vbbr_bot_jan2025_postbot.csv", recent_date_dir(here("data/raw")))
+df_file_postbot <- read_survey(here(filepath)) %>% 
+  mutate(STUDY_ID = "677db0064cdaa4ae7dd475b8-postbot")
 
-```{r}
-source("secrets.R")  # load api_key
-check_ip <- function(ip_address, api_key) {  
-	require(jsonlite)
-	require(httr)  
-	# Construct the URL  
-	url <- paste0("https://vpnapi.io/api/", ip_address, "?key=", api_key)    
-	# Send the API request  
-	response <- httr::GET(url)    
-	# Check if the request was successful  
-	if (httr::http_status(response)$category == "Success") {    
-	# Parse the JSON response    
-	parsed_response <- jsonlite::fromJSON(httr::content(response, "text", encoding = "UTF-8"))
-  # Extract desired fields into a named list    
-	extracted_data <- list(      
-		IP_country = parsed_response$location$country,      
-		IP_vpn = parsed_response$security$vpn,      
-		IP_tor = parsed_response$security$tor,      
-		IP_proxy = parsed_response$security$proxy,      
-		IP_relay = parsed_response$security$relay    
-		)        
-		# Return the output as a dataframe    
-		return(as.data.frame(extracted_data))  
-	} else {    
-		# If request was not successful, print error message    
-		cat("Error:", httr::http_status(response)$reason, "\n")    
-		return(NULL)  
-	}}
+filepath <- sprintf("%s/vbbr_bot_jan2025_round2.csv", recent_date_dir(here("data/raw")))
+df_file_round2 <- read_survey(here(filepath))
 
-df_ipChecked <- df_file %>%
-select(prolific_id, IPAddress) %>%
-mutate(ip_info = map(IPAddress, ~check_ip(.x, api_key))) %>%
-unnest(ip_info)
+df_file <- df_file_round1 %>% 
+  bind_rows(df_file_postbot) %>% 
+  bind_rows(df_file_round2) %>% 
+  clean_names()
+
+STUDY_ID_PILOT <- "6779b83c25f35fc959988dfc"
+STUDY_ID_R1 <- "677db0064cdaa4ae7dd475b8"
+STUDY_ID_R1_FIX <- "677db0064cdaa4ae7dd475b8-postbot"
+STUDY_ID_R2 <- "677df225125f646cc31fdd75"
+STUDY_ID_R3 <- "677e2778cd69193846bccea3"
+
+
+# df_file %>%
+#   names %>%
+#   cat(sep = "\n")
+df_file %>% 
+  filter(prolific_id == "66ba08ae50bac2bbfa96393c")
 ```
 
 
@@ -92,33 +104,86 @@ Process data
 df_raw <- df_file %>% 
   # -- remove qualtrics erroneous header -- #
   # slice(-1) %>% 
-  # -- remove useless columns -- #
-  select(-IPAddress, -RecipientFirstName, -RecipientLastName, -RecipientEmail,
-         -ExternalReference, -LocationLatitude, -LocationLongitude,
-         -DistributionChannel, -UserLanguage) %>% 
-  rename(duration = `Duration (in seconds)`) %>% 
   # -- add raw data file name -- #
   mutate(rawDataFile = filepath) %>% 
   # -- drop columns with all NA -- #
   select(-where(~all(is.na(.)))) %>% 
   # -- rename columns -- #
   codebook_renamer(names_from=codebook_vars$old_var_name,
-                   names_to=codebook_vars$new_var_name)
+                   names_to=codebook_vars$new_var_name) 
 ```
 
 ```{r}
 df_recoded <- df_raw %>% 
-	# -- recode variables -- #
-	codebook_recoder(var_regex=codebook_values$var_name,
-	                 values_from=codebook_values$old_val,
-	                 values_to=codebook_values$new_val)
+  # -- recode variables -- #
+  codebook_recoder(var_regex=codebook_values$var_name,
+                   values_from=codebook_values$old_val,
+                   values_to=codebook_values$new_val)
 ```
 
 
 ```{r}
-df_proc <- df_recoded %>% 
+
+pids_w_qualtrics_fix <- df_recoded %>% 
+  filter(study_id == STUDY_ID_R1_FIX) %>% 
+  pull(prolific_id)
+
+df_proc_0 <- df_recoded %>% 
   # -- remove columns with all NA -- #
-  select_if(~!all(is.na(.)))
+  select_if(~!all(is.na(.))) %>% 
+  # -- rename pid -- #
+  rename(pid = prolific_id) %>% 
+  mutate(pid = str_remove_all(pid, " ")) %>%
+  # -- convert dates to datetime -- #
+  mutate(
+    start_date = ymd_hms(start_date),
+    end_date = ymd_hms(end_date),
+    recorded_date = ymd_hms(recorded_date)
+  ) %>% 
+  # -- select study version -- #
+  filter(study_id != STUDY_ID_PILOT) %>%
+  # filter(study_id == STUDY_ID_PILOT) %>%
+  # filter(study_id == STUDY_ID_R1) %>%
+  # filter(study_id == STUDY_ID_R1_FIX) %>%
+  # filter(study_id == STUDY_ID_R2) %>%
+  # filter(study_id == STUDY_ID_R3) %>%
+  
+  
+  # -- filter incompletes -- #
+  # filter(!is.na(use_survey)) %>% 
+  # -- arrange by date -- #
+  arrange(start_date)
+
+# Dealing with the fact I had to give some participants a separate link for the second half of their survey
+df_proc_fixed_pt1 <- df_proc_0 %>% 
+  filter(pid %in% pids_w_qualtrics_fix) %>% 
+  filter(study_id == STUDY_ID_R1) %>% 
+  select(-(bot_enjoy:rawDataFile), pid)
+
+df_proc_fixed_pt1 %>% 
+  filter(duplicated(pid))
+
+df_proc_fixed_pt2 <- df_proc_0 %>% 
+  filter(pid %in% pids_w_qualtrics_fix) %>% 
+  filter(study_id == STUDY_ID_R1_FIX) %>% 
+  select(pid, bot_enjoy:rawDataFile) %>% 
+  filter(!duplicated(pid))
+
+df_proc_fixed_pt2 %>% 
+  filter(pid %in% 
+           (df_proc_fixed_pt2 %>% 
+              filter(duplicated(pid)) %>% 
+              pull(pid))
+         ) %>% 
+  view
+
+df_proc <- df_proc_0 %>% 
+  filter(!pid %in% pids_w_qualtrics_fix) %>% 
+  bind_rows(
+    df_proc_fixed_pt1 %>% 
+      inner_join(df_proc_fixed_pt2, by="pid"))
+
+  
 
 
 # -- Check for duplicates -- #
@@ -129,43 +194,391 @@ df_proc %>%
 ```
 
 
+```{r}
+source("secrets.R")  # load api_key
+check_ip <- function(ip_address, api_key) {  
+  require(jsonlite)
+  require(httr)  
+  # Construct the URL  
+  url <- paste0("https://vpnapi.io/api/", ip_address, "?key=", api_key)    
+  # Send the API request  
+  response <- httr::GET(url)    
+  # Check if the request was successful  
+  if (httr::http_status(response)$category == "Success") {    
+    # Parse the JSON response    
+    parsed_response <- jsonlite::fromJSON(httr::content(response, "text", encoding = "UTF-8"))
+    # Extract desired fields into a named list    
+    extracted_data <- list(      
+      IP_country = parsed_response$location$country,      
+      IP_vpn = parsed_response$security$vpn,      
+      IP_tor = parsed_response$security$tor,      
+      IP_proxy = parsed_response$security$proxy,      
+      IP_relay = parsed_response$security$relay    
+    )        
+    # Return the output as a dataframe    
+    return(as.data.frame(extracted_data))  
+  } else {    
+    # If request was not successful, print error message    
+    cat("Error:", httr::http_status(response)$reason, "\n")    
+    return(NULL)  
+  }}
+
+# df_ipChecked <- df_proc %>%
+#   # filter(study_id == STUDY_ID_R3) %>% 
+#   select(pid, ip_address) %>%
+#   mutate(ip_info = map(ip_address, ~check_ip(.x, api_key))) %>%
+#   unnest(ip_info)
+# df_ipChecked %>%
+#   filter(IP_vpn == TRUE | IP_tor == TRUE | IP_proxy == TRUE | IP_relay == TRUE)
+
+# 
+# pids_vpn <- df_ipChecked %>% 
+#   filter(IP_vpn == TRUE | IP_tor == TRUE | IP_proxy == TRUE | IP_relay == TRUE) %>% 
+#   pull(pid)
+# df_file %>% 
+#   filter(prolific_id %in% pids_vpn) %>% 
+#   view
+# 
+# df_messages %>% 
+#   filter(pid == "5dee8ee31255595293a9906b") %>% 
+#   view
+# 
+# df_messages %>% 
+#   filter(pid == "671d309dd87b3db020d02f1a") %>% 
+#   view
+# 
+# df_participants %>% 
+#   filter(pid == "671d309dd87b3db020d02f1a") %>% 
+#   view
+# 
+# df_proc %>% 
+#   filter(pid == "671d309dd87b3db020d02f1a") %>% 
+#   select(contains("ac")) %>% 
+#   view
+
+```
+
+Check AC
+---
+```{r}
+d_fail <- df_proc %>% 
+  mutate_at(vars(ac_vals, ac_vals_2), as.numeric) %>% 
+  filter(ac_vals != 99 | 
+           (ac_vals_2 > 27 | ac_vals_2 < 23) | # 25
+           ac_primals != "Strongly disagree")
+
+d_fail %>% 
+  select(pid, ac_vals, ac_vals_2, ac_primals) 
+failed_ac_pids <- d_fail$pid
+
+d_fail$ac_vals
+d_fail$ac_vals_2
+d_fail$ac_primals
+```
+
+
 
 Read chatbot data
 ---
+
+DEAL WITH PIDs with 2nd attempt
+5f1db15b22c07d01e51960ad-2 
+65e1204f1bee2811d7894471-2
+
+
 ```{r}
 filepath_participants <- here("data/raw/sql_export/participants.csv")
 df_participants_file <- read_csv(filepath_participants) %>% 
-  filter(prolific_id %in% df_file$prolific_id)
+  rename(pid = id)
 
 filepath_messages <- here("data/raw/sql_export/messages.csv")
 df_messages_file <- read_csv(filepath_messages) %>% 
-  filter(participant_id %in% df_participants_file$id) %>% 
-  left_join(df_participants_file %>% 
-              select(id, prolific_id), 
-            by = c("participant_id" = "id")) %>% 
-  select(prolific_id, everything())
+  rename(pid = participant_id)
 
 filepath_issues <- here("data/raw/sql_export/issues.csv")
 df_issues_file <- read_csv(filepath_issues) %>% 
-  filter(participant_id %in% df_participants_file$id) %>% 
-  left_join(df_participants_file %>% 
-              select(id, prolific_id), 
-            by = c("participant_id" = "id")) %>% 
-  select(prolific_id, everything())
+  rename(pid = participant_id)
 
 filepath_reappraisals <- here("data/raw/sql_export/reappraisals.csv")
-df_reaps_file <- read_csv(filepath_reappraisals) %>% 
-  filter(participant_id %in% df_participants_file$id) %>% 
-  left_join(df_participants_file %>% 
-              select(id, prolific_id), 
-            by = c("participant_id" = "id")) %>% 
-  select(prolific_id, everything())
+df_reaps_file <- read_csv(filepath_reappraisals)  %>% 
+  rename(pid = participant_id)
 
-df_messages_file %>% 
-  filter(prolific_id=="66e3420030eb97c9e561a351") %>% 
-  view
+pids_w_2nd_attempt <- df_participants_file %>% 
+  filter(str_detect(pid, "-2$")) %>% 
+  mutate(pid = str_remove(pid, "-2")) %>%
+  pull(pid)
+
 
 ```
+
+Process chatbot data
+---
+```{r}
+
+qualtrics_join_keep_cols <- c("pid", "feedback_txt", "use_survey", "study_id")
+
+df_participants <- df_participants_file %>% 
+  # -- remove tests -- # 
+  filter(!str_detect(pid, "^test")) %>% 
+  filter(!str_detect(pid, "^99999")) %>% 
+  filter(!str_detect(pid, "^11111")) %>% 
+  filter(!str_detect(pid, "^22222")) %>% 
+  filter(!str_detect(pid, "^00000")) %>% 
+  # -- fix malformed pid -- #
+  mutate(pid = str_replace_all(pid, " directly into.*", "")) %>% 
+  # -- fix 2nd attempt pids -- #
+  filter(!pid %in% pids_w_2nd_attempt) %>%
+  mutate(pid = str_remove(pid, "-2$")) %>% 
+  # -- keep only responses with qualtrics -- #
+  inner_join(df_proc %>% 
+               select(one_of(qualtrics_join_keep_cols))) %>% 
+  # -- remove attention check fails -- #
+  filter(!pid %in% failed_ac_pids) %>% 
+  # -- remove incomplete chat interactions -- #
+  filter(cur_state == "end")
+
+df_messages <- df_messages_file %>% 
+  # -- fix 2nd attempt pids -- #
+  filter(!pid %in% pids_w_2nd_attempt) %>%
+  mutate(pid = str_remove(pid, "-2$"))  %>% 
+  # -- keep only responses with qualtrics -- #
+  inner_join(df_proc %>% 
+               select(pid, feedback_txt, use_survey)) %>% 
+  # -- keep only responses in df_participants (ie completed chatbot) -- #
+  filter(pid %in% df_participants$pid) %>%
+  # -- remove attention check fails -- #
+  filter(!pid %in% failed_ac_pids)
+
+df_issues <- df_issues_file %>% 
+  # -- fix 2nd attempt pids -- #
+  filter(!pid %in% pids_w_2nd_attempt) %>%
+  mutate(pid = str_remove(pid, "-2$"))  %>% 
+  # -- keep only responses with qualtrics -- #
+  inner_join(df_proc %>% 
+               select(one_of(qualtrics_join_keep_cols))) %>% 
+  # -- keep only responses in df_participants (ie completed chatbot) -- #
+  filter(pid %in% df_participants$pid) %>%
+  # -- remove attention check fails -- #
+  filter(!pid %in% failed_ac_pids)
+
+
+df_reaps <- df_reaps_file %>% 
+  # -- fix 2nd attempt pids -- #
+  filter(!pid %in% pids_w_2nd_attempt) %>%
+  mutate(pid = str_remove(pid, "-2$"))  %>% 
+  # -- keep only responses with qualtrics -- #
+  inner_join(df_proc %>% 
+               select(one_of(qualtrics_join_keep_cols))) %>% 
+  # -- keep only responses in df_participants (ie completed chatbot) -- #
+  filter(pid %in% df_participants$pid) %>%
+  # -- remove attention check fails -- #
+  filter(!pid %in% failed_ac_pids)
+
+```
+
+
+individual differences
+===
+
+```{r}
+# 
+# subscales_items <- list(
+#   primal_abundant = c('primal_ab1', 'primal_ab2x', 'primal_ab3', 'primal_ab4'),
+#   primal_harmless = c('primal_ht1x', 'primal_ht2', 'primal_ht3', 'primal_ht4x', 'primal_ht5'),
+#   primal_hierarchical = c('primal_hn1', 'primal_hn2', 'primal_hn3', 'primal_hn4x', 'primal_hn5'),
+#   primal_improvable = c('primal_it1', 'primal_it2', 'primal_it3', 'primal_it4x', 'primal_it5'),
+#   primal_intentional = c('primal_iu1', 'primal_iu2', 'primal_iu3x', 'primal_iu4x', 'primal_iu5'),
+#   primal_interactive = c('primal_ii1', 'primal_ii2', 'primal_ii3', 'primal_ii4x', 'primal_ii5'),
+#   primal_interesting = c('primal_ib1x', 'primal_ib2x', 'primal_ib3x', 'primal_ib4'),
+#   primal_just = c('primal_ju1', 'primal_ju2x', 'primal_ju3', 'primal_ju4', 'primal_ju5'),
+#   primal_regenerative = c('primal_rd1x', 'primal_rd2', 'primal_rd3', 'primal_rd4x')
+# )
+#  
+# # Compute alphas for each subscale
+# alphas <- map_dfr(names(subscales_items), function(scale_name) {
+#   items <- subscales_items[[scale_name]]
+#   # Select the relevant items from df_proc
+#   df_items <- df_recoded %>% select(all_of(items))
+#   # Compute Cronbach's alpha
+#   alpha_value <- psych::alpha(df_items)$total$std.alpha
+#   # Return a dataframe with the subscale name and alpha value
+#   tibble(scale = scale_name, alpha = alpha_value)
+# })
+
+df_proc %>% 
+  select(starts_with("primal_ab")) %>% 
+  psych::alpha()
+df_proc %>% 
+  select(starts_with("primal_au")) %>% 
+  psych::alpha()
+
+df_proc %>% 
+  select(starts_with("primal_ht")) %>% 
+  psych::alpha()
+
+df_indiff <- df_proc %>% 
+  filter(use_survey == "Yes") %>%
+  filter(!pid %in% failed_ac_pids) %>%
+  filter(pid %in% df_participants$pid) %>% 
+   mutate(
+    primal_abundant = (primal_ab1 + primal_ab2x + primal_ab3 + primal_ab4) / 4,
+    primal_acceptable = (primal_au1x + primal_au2x + primal_au3x + primal_au4) / 4,
+    primal_beautiful = (primal_bu1x + primal_bu2 + primal_bu3 + primal_bu4) / 4,
+    primal_changing = (primal_cs1 + primal_cs2 + primal_cs3 + primal_cs4x + primal_cs5) / 5,
+    primal_cooperative = (primal_cc1x + primal_cc2x + primal_cc3x + primal_cc4) / 4,
+    primal_funny = (primal_fh1 + primal_fh2 + primal_fh3x + primal_fh4) / 4,
+    primal_harmless = (primal_ht1x + primal_ht2 + primal_ht3 + primal_ht4x + primal_ht5) / 5,
+    primal_hierarchical = (primal_hn1 + primal_hn2 + primal_hn3 + primal_hn4x + primal_hn5) / 5,
+    primal_improvable = (primal_it1 + primal_it2 + primal_it3 + primal_it4x + primal_it5) / 5,
+    primal_intentional = (primal_iu1 + primal_iu2 + primal_iu3x + primal_iu4x + primal_iu5) / 5,
+    primal_interactive = (primal_ii1 + primal_ii2 + primal_ii3 + primal_ii4x + primal_ii5) / 5,
+    primal_interconnected = (primal_ia1 + primal_ia2 + primal_ia3 + primal_ia4x) / 4,
+    primal_interesting = (primal_ib1x + primal_ib2x + primal_ib3x + primal_ib4) / 4,
+    primal_just = (primal_ju1 + primal_ju2x + primal_ju3 + primal_ju4 + primal_ju5) / 5,
+    primal_meaningful = (primal_mm1x + primal_mm2x + primal_mm3x + primal_mm4) / 4,
+    primal_needsme = (primal_nd1 + primal_nd2 + primal_nd3 + primal_nd4x) / 4,
+    primal_pleasurable = (primal_pm1x + primal_pm2x + primal_pm3 + primal_pm4 + primal_pm5) / 5,
+    primal_progressing = (primal_pd1x + primal_pd2x + primal_pd3 + primal_pd4) / 4,
+    primal_regenerative = (primal_rd1x + primal_rd2 + primal_rd3 + primal_rd4x) / 4,
+    primal_stable = (primal_sf1x + primal_sf2x + primal_sf3x + primal_sf4) / 4,
+    primal_understandable = (primal_ut1 + primal_ut2 + primal_ut3x + primal_ut4x) / 4,
+    primal_worthexploring = (primal_wn1 + primal_wn2 + primal_wn3 + primal_wn4x) / 4,
+    primal_safe = (primal_cc1x + primal_cc2x + primal_cc3x + primal_cc4 + primal_ht1x + 
+                     primal_ht2 + primal_ht3 + primal_ht4x + primal_ht5 + primal_ju2x + 
+                     primal_ju4 + primal_ju5 + primal_pm1x + primal_pm2x + primal_pm3 + 
+                     primal_pm4 + primal_pm5 + primal_pd1x + primal_pd2x + primal_pd3 + 
+                     primal_pd4 + primal_rd1x + primal_rd2 + primal_rd3 + primal_rd4x + 
+                     primal_sf1x + primal_sf2x + primal_sf3x + primal_sf4) / 29,
+    primal_enticing = (primal_ab1 + primal_ab2x + primal_ab3 + primal_ab4 + primal_bu1x + 
+                         primal_bu2 + primal_bu3 + primal_bu4 + primal_fh1 + primal_fh2 + 
+                         primal_fh3x + primal_fh4 + primal_it2 + primal_it3 + primal_it5 + 
+                         primal_ib1x + primal_ib2x + primal_ib3x + primal_ib4 + primal_mm1x + 
+                         primal_mm2x + primal_mm3x + primal_mm4 + primal_wn1 + primal_wn2 + 
+                         primal_wn3 + primal_wn4x + primal_e1 + primal_e2) / 28,
+    primal_alive = (primal_iu1 + primal_iu2 + primal_iu3x + primal_iu4x + primal_iu5 + 
+                      primal_ii1 + primal_ii3 + primal_ii4x + primal_ii5 + primal_ju3 + 
+                      primal_nd1 + primal_nd2 + primal_nd3 + primal_nd4x) / 14,
+    primal_good = (primal_ab1 + primal_ab2x + primal_ab3 + primal_ab4 + primal_bu1x + 
+                     primal_bu2 + primal_bu3 + primal_bu4 + primal_cc1x + primal_cc2x + 
+                     primal_cc3x + primal_cc4 + primal_fh1 + primal_fh2 + primal_fh3x + 
+                     primal_fh4 + primal_ht1x + primal_ht2 + primal_ht3 + primal_ht4x + 
+                     primal_ht5 + primal_it1 + primal_it2 + primal_it3 + primal_it4x + 
+                     primal_it5 + primal_ib1x + primal_ib2x + primal_ib3x + primal_ib4 + 
+                     primal_ju1 + primal_ju2x + primal_ju3 + primal_ju4 + primal_ju5 + 
+                     primal_mm1x + primal_mm2x + primal_mm3x + primal_mm4 + primal_nd1 + 
+                     primal_nd2 + primal_nd3 + primal_nd4x + primal_pm1x + primal_pm2x + 
+                     primal_pm3 + primal_pm4 + primal_pm5 + primal_pd1x + primal_pd2x + 
+                     primal_pd3 + primal_pd4 + primal_rd1x + primal_rd2 + primal_rd3 + 
+                     primal_rd4x + primal_sf1x + primal_sf2x + primal_sf3x + primal_sf4 + 
+                     primal_ut1 + primal_ut2 + primal_ut3x + primal_ut4x + primal_wn1 + 
+                     primal_wn2 + primal_wn3 + primal_wn4x + primal_g1x + primal_e1 + 
+                     primal_e2) / 71
+  ) %>% 
+  tally_scale("twivi_conformity") %>% 
+  tally_scale("twivi_tradition") %>% 
+  tally_scale("twivi_hedonism") %>%
+  tally_scale("twivi_stimulation") %>%
+  tally_scale("twivi_selfdirection") %>%
+  tally_scale("twivi_benevolence") %>%
+  tally_scale("twivi_universalism") %>%
+  tally_scale("twivi_power") %>%
+  tally_scale("twivi_achievement") %>%
+  tally_scale("twivi_security") %>% 
+  select(pid, start_date, end_date, 
+         bot_enjoy, bot_helpful, bot_reuse,
+         matches("primal_[a-z]+$"),
+         matches("twivi_[a-z]+$"),
+         starts_with("vals_"),
+         age, starts_with("gender"), starts_with("race"), 
+         income, edu,
+         use_survey,  use_survey_values, use_survey_beliefs,
+         q240, q246, feedback_txt, study_id, rawDataFile) 
+```
+
+
+
+Approvals
+===
+
+easy approval
+```{r}
+approved_pids <- df_participants %>% 
+  filter(cur_state == "end") %>% 
+  inner_join(df_proc %>% 
+               filter(study_id == STUDY_ID_R2) %>%
+               filter(!pid %in% failed_ac_pids) %>%
+               filter(use_survey == "Yes")) %>% 
+  pull(pid) 
+approved_pids %>%
+  cat(sep="\n")
+
+df_messages %>% 
+  filter(pid %in% approved_pids) %>% 
+  filter(tolower(role) == "user") %>% 
+  arrange(pid, created_at) %>%
+  write_csv("~/Downloads/approved_messages.csv")
+```
+
+main approval
+---
+```{r}
+
+tmp_pids <- read_csv("~/Downloads/prolific_export_677db0064cdaa4ae7dd475b8.csv") %>% 
+  filter(Status == "AWAITING REVIEW") %>% 
+  pull(`Participant id`)
+df_participants %>% 
+  filter(study_id == STUDY_ID_R1_FIX) %>% 
+  filter(pid %in% tmp_pids) %>%
+  pull(pid) %>% 
+  unique %>% 
+  cat(sep="\n")
+```
+
+
+check individual participants
+```{r}
+
+id_to_check = "66ba08ae50bac2bbfa96393c"
+
+df_participants_file %>% 
+  filter(pid == id_to_check) %>% 
+  view
+
+
+df_proc %>% 
+  select(pid, ac_vals, ac_vals_2, ac_primals, bot_enjoy, bot_helpful, bot_reuse, q240, feedback_txt) %>%
+  filter(pid == id_to_check) %>% 
+  view
+
+
+
+df_file %>% 
+  select(prolific_id, ac_vals_1_1, ac_vals_2_1, ac_primals, bot_enjoy_1, bot_helpful_1, q243_1, q240,q246, feedback_txt) %>%
+  filter(prolific_id == id_to_check) %>% 
+  view
+
+
+df_messages_file %>% 
+  filter(pid == id_to_check) %>% 
+  view
+
+df_messages_file %>% 
+  filter(pid == id_to_check) %>% 
+  view
+
+df_reaps %>% 
+  filter(pid == id_to_check) %>% 
+  view
+
+
+df_proc %>% 
+  filter(pid == id_to_check) %>% 
+  select(contains("ac")) %>% view
+
+
+
+```
+
 
 ```{r}
 df_messages_file %>% 
@@ -174,19 +587,68 @@ df_messages_file %>%
   view
 ```
 
+Get incompletes
+```{r}
+completed_chatbot_ids <- df_participants %>% 
+  filter(cur_state == "end") %>% 
+  pull(pid)
+df_proc %>% 
+  filter(!pid %in% completed_chatbot_ids) %>% 
+  pull(pid)
+```
 
+
+
+Get people who finished chatbot, but never turned in survey
+```{r}
+# df_participants %>% 
+#   filter(cur_state == "end") %>% 
+#   filter(!pid %in% failed_ac_pids) %>% 
+#   filter(!pid %in% approved_pids) %>% 
+#   select(pid) %>% 
+#   write_csv("~/Downloads/tmp.csv")
+
+
+
+
+```
 
 ```{r, echo=FALSE}
 # ------ End Preprocessing ------ #
 # ----- Run all chunks above -----#
 ```
 
+
+bad ids
+5fc6f4cff3df11159190cbef
+65b3cfc2f4ff8a59dd149013
+663e3ff81f442e7ad943a761
+65e379fd46ad361e29cd00aa
+65b3cfc2f4ff8a59dd149013
+6696d3feb3d6e70378ecceca
+
 Export
 ===
 ```{r}
-filepath_output <- paste0("data/proc/", Sys.Date(), "/_proc.csv")
+# filepath_output <- paste0("data/proc/", Sys.Date(), "/_proc.csv")
+filepath_output <- paste0("data/proc/vbbr_bot_jan2025_proc.csv")
 df_proc %>% 
   write_csv(here(filepath_output))
+
+df_indiff %>% 
+  write_csv(here("data/proc/vbbr_bot_jan2025_indiff.csv"))
+
+df_participants %>% 
+  write_csv(here("data/proc/vbbr_bot_jan2025_participants.csv"))
+
+df_messages %>%
+  write_csv(here("data/proc/vbbr_bot_jan2025_messages.csv"))
+
+df_issues %>%
+  write_csv(here("data/proc/vbbr_bot_jan2025_issues.csv"))
+
+df_reaps %>%
+  write_csv(here("data/proc/vbbr_bot_jan2025_reaps.csv"))
 ```
 
 

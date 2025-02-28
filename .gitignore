@@ -30,3 +30,7 @@ alembic.ini
 **/*.csv
 
 **/secrets.R
+
+**/*.rds
+
+vbbr_bot_rproj/jupyter/batch**
