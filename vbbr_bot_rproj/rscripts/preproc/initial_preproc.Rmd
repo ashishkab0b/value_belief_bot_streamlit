@@ -23,6 +23,7 @@ library(here)
 library(tidyverse)
 library(tidylog)
 library(lubridate)
+library(lubridate)
 theme_set(theme_bw())
 ```
 
@@ -110,6 +111,7 @@ df_raw <- df_file %>%
   select(-where(~all(is.na(.)))) %>% 
   # -- rename columns -- #
   codebook_renamer(names_from=codebook_vars$old_var_name,
+                   names_to=codebook_vars$new_var_name) 
                    names_to=codebook_vars$new_var_name) 
 ```
 
@@ -290,13 +292,16 @@ DEAL WITH PIDs with 2nd attempt
 filepath_participants <- here("data/raw/sql_export/participants.csv")
 df_participants_file <- read_csv(filepath_participants) %>% 
   rename(pid = id)
+  rename(pid = id)
 
 filepath_messages <- here("data/raw/sql_export/messages.csv")
 df_messages_file <- read_csv(filepath_messages) %>% 
   rename(pid = participant_id)
+  rename(pid = participant_id)
 
 filepath_issues <- here("data/raw/sql_export/issues.csv")
 df_issues_file <- read_csv(filepath_issues) %>% 
+  rename(pid = participant_id)
   rename(pid = participant_id)
 
 filepath_reappraisals <- here("data/raw/sql_export/reappraisals.csv")
@@ -577,7 +582,15 @@ df_proc %>%
 
 
 
+
+df_proc %>% 
+  filter(pid == id_to_check) %>% 
+  select(contains("ac")) %>% view
+
+
+
 ```
+
 
 
 ```{r}
